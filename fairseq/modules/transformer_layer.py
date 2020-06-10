@@ -54,9 +54,11 @@ class TransformerEncoderLayer(nn.Module):
 
         self.final_layer_norm = LayerNorm(self.embed_dim)
 
+    # TODO(jains): change these defns for approximate matmul methods.
     def build_fc1(self, input_dim, output_dim, q_noise, qn_block_size):
         return quant_noise(nn.Linear(input_dim, output_dim), p=q_noise, block_size=qn_block_size)
 
+    # TODO(jains): change these defns for approximate matmul methods.
     def build_fc2(self, input_dim, output_dim, q_noise, qn_block_size):
         return quant_noise(nn.Linear(input_dim, output_dim), p=q_noise, block_size=qn_block_size)
 
@@ -207,9 +209,11 @@ class TransformerDecoderLayer(nn.Module):
 
         self.onnx_trace = False
 
+    # TODO(jains): change these defns for approximate matmul methods.
     def build_fc1(self, input_dim, output_dim, q_noise, qn_block_size):
         return quant_noise(nn.Linear(input_dim, output_dim), q_noise, qn_block_size)
 
+    # TODO(jains): change these defns for approximate matmul methods.
     def build_fc2(self, input_dim, output_dim, q_noise, qn_block_size):
         return quant_noise(nn.Linear(input_dim, output_dim), q_noise, qn_block_size)
 

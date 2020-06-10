@@ -337,12 +337,20 @@ class FairseqTask(object):
                   gradient
                 - logging outputs to display while training
         """
+        # TODO(jains) Can I set timers here for forward() and backward() separately?
+        # What about sum,mean,std of fwd() and bw() time?
+        # Hack it in -- same style as meProp. Propogate up the stack.
         model.train()
         model.set_num_updates(update_num)
+        # note; doesn't account for cuda call times; not synchronized. 
+        metrics.log_start_time("model_forward", priority=800, round=4)
         loss, sample_size, logging_output = criterion(model, sample)
+        metrics.log_stop_time("model_forward")
         if ignore_grad:
             loss *= 0
+        metrics.log_start_time("model_backward", priority=800, round=4)
         optimizer.backward(loss)
+        metrics.log_stop_time("model_backward")
         return loss, sample_size, logging_output
 
     def valid_step(self, sample, model, criterion):

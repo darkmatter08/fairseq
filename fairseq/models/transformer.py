@@ -406,6 +406,8 @@ class TransformerEncoder(FairseqEncoder):
         x, encoder_embedding = self.forward_embedding(src_tokens)
 
         # B x T x C -> T x B x C
+        # BxTxC, i.e. (batch_size, timesteps, input_size)
+        # TxBxC, i.e. (timesteps, batch_size, input_size)
         x = x.transpose(0, 1)
 
         # compute padding mask
