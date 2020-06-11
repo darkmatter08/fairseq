@@ -35,6 +35,7 @@ class Linear_meProp(nn.Module):
         self.b.data.uniform_(-stdv, stdv)
 
     def forward(self, x):
+        # Note: Need to modify this to work with 3-tensor inputs -- see LinearCRS.forward()
         if self.unified:
             return linearUnified(self.k)(x, self.w, self.b)
         else:
@@ -119,6 +120,7 @@ class LinearShawn(nn.Module):
         self.b.data.uniform_(-stdv, stdv)
 
     def forward(self, x):
+        # Note: Need to modify this to work with 3-tensor inputs -- see LinearCRS.forward()
         return linearUnified_shawn(self.k)(x, self.w, self.b)
 
     def __repr__(self):

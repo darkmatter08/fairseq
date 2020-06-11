@@ -399,6 +399,8 @@ class TransformerDecoderLayer(nn.Module):
 
 
 # Explicitly added to `fairseq/modules/__init__.py`
+# Note -- we may not need to explicitly add it, as we do an explicit 
+# local import here instead.
 class CRS_TransformerEncoderLayer_NoQuant(TransformerEncoderLayer):
 
     def __init__(self, args):
