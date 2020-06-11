@@ -27,12 +27,12 @@ search:
     # - cd fairseq
     # - pip install --editable ./
     - pip install --user ./
-    # Hack to get fairseq-* CLI tools on PATH, may be caused by --user install?
     - pip install --user pyarrow
     - pip install --user fastBPE sacremoses subword_nmt
     - pip install --user tensorboardX
     - pip freeze > img_pip_freeze.txt
-    - export PATH=$PATH:/root/.local/bin
+    # Hack to get fairseq-* CLI tools on PATH, may be caused by --user install?
+    - export PATH=$$PATH:/root/.local/bin
     - >-
       fairseq-train
       data-bin/iwslt14.tokenized.de-en
@@ -57,6 +57,7 @@ search:
       --results-path $$PT_OUTPUT_DIR/results_fairseq-generate
     - echo "results_fairseq-generate:::"
     - tail $$PT_OUTPUT_DIR/results_fairseq-generate/*
+    - bash
     submit_args:
       container_args:
         shm_size: 128G

@@ -13,6 +13,8 @@ from fairseq.modules import LayerNorm, MultiheadAttention
 from fairseq.modules.quant_noise import quant_noise
 from torch import Tensor
 
+from .jain_modules import Linear_meProp, LinearCRS, LinearShawn
+
 
 class TransformerEncoderLayer(nn.Module):
     """Encoder layer block.
@@ -394,6 +396,64 @@ class TransformerDecoderLayer(nn.Module):
 
         if self.encoder_attn is not None:
             self.encoder_attn.reorder_incremental_state(incremental_state, new_order)
+
+
+# Explicitly added to `fairseq/modules/__init__.py`
+class CRS_TransformerEncoderLayer_NoQuant(TransformerEncoderLayer):
+
+    def __init__(self, args):
+        # TODO(jains) actually implement arguments
+        self.k = 0 #args.k
+        self.strategy = 'det_top_k' # args.strategy
+        super().__init__(args)
+
+    # TODO(jains): change these defns for approximate matmul methods.
+    def build_fc1(self, input_dim, output_dim, q_noise, qn_block_size):
+        print('using CRS_TransformerEncoderLayer_NoQuant.build_fc1')
+        return LinearCRS(input_dim, output_dim, k=self.k, strategy=self.strategy)
+
+    # TODO(jains): change these defns for approximate matmul methods.
+    def build_fc2(self, input_dim, output_dim, q_noise, qn_block_size):
+        print('using CRS_TransformerEncoderLayer_NoQuant.build_fc2')
+        return LinearCRS(input_dim, output_dim, k=self.k, strategy=self.strategy)
+
+
+# Explicitly added to `fairseq/modules/__init__.py`
+class meProp_TransformerEncoderLayer_NoQuant(TransformerEncoderLayer):
+
+    def __init__(self, args):
+        # TODO(jains) actually implement arguments
+        self.k = 0 # args.k
+        super().__init__(args)
+
+    # TODO(jains): change these defns for approximate matmul methods.
+    def build_fc1(self, input_dim, output_dim, q_noise, qn_block_size):
+        print('using meProp_TransformerEncoderLayer_NoQuant.build_fc1')
+        return Linear_meProp(input_dim, output_dim, self.k, unified=True)
+        # return LinearShawn(input_dim, output_dim, self.k, unified=True)
+
+    # TODO(jains): change these defns for approximate matmul methods.
+    def build_fc2(self, input_dim, output_dim, q_noise, qn_block_size):
+        print('using meProp_TransformerEncoderLayer_NoQuant.build_fc2')
+        return Linear_meProp(input_dim, output_dim, self.k, unified=True)
+        # return LinearShawn(input_dim, output_dim, self.k, unified=True)
+
+
+# Explicitly added to `fairseq/modules/__init__.py`
+class TransformerEncoderLayer_NoQuant(TransformerEncoderLayer):
+
+    def __init__(self, args):
+        super().__init__(args)
+
+    # TODO(jains): change these defns for approximate matmul methods.
+    def build_fc1(self, input_dim, output_dim, q_noise, qn_block_size):
+        print('using TransformerEncoderLayer_NoQuant.build_fc1')
+        return nn.Linear(input_dim, output_dim)
+
+    # TODO(jains): change these defns for approximate matmul methods.
+    def build_fc2(self, input_dim, output_dim, q_noise, qn_block_size):
+        print('using TransformerEncoderLayer_NoQuant.build_fc2')
+        return nn.Linear(input_dim, output_dim)
 
 
 def Linear(in_features, out_features, bias=True):

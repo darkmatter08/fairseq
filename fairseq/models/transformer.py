@@ -26,6 +26,8 @@ from fairseq.modules import (
     SinusoidalPositionalEmbedding,
     TransformerDecoderLayer,
     TransformerEncoderLayer,
+    CRS_TransformerEncoderLayer_NoQuant,
+    TransformerEncoderLayer_NoQuant,
 )
 from fairseq.modules.quant_noise import quant_noise as apply_quant_noise_
 from torch import Tensor
@@ -346,6 +348,9 @@ class TransformerEncoder(FairseqEncoder):
             self.layers = LayerDropModuleList(p=self.encoder_layerdrop)
         else:
             self.layers = nn.ModuleList([])
+        # TODO(jains) swap to different build_encoder_layer() calls depending on exact layers.
+        # based on arg with --experiment_layer_idx
+        # --experiment_layer_type crs_det_top_k
         self.layers.extend([
             self.build_encoder_layer(args)
             for i in range(args.encoder_layers)
@@ -362,7 +367,9 @@ class TransformerEncoder(FairseqEncoder):
             self.layernorm_embedding = None
 
     def build_encoder_layer(self, args):
-        return TransformerEncoderLayer(args)
+        # return TransformerEncoderLayer(args)
+        return CRS_TransformerEncoderLayer_NoQuant(args)
+        # return TransformerEncoderLayer_NoQuant(args)
 
     def forward_embedding(self, src_tokens):
         # embed tokens and positions

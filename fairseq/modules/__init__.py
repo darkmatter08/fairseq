@@ -29,7 +29,9 @@ from .sinusoidal_positional_embedding import SinusoidalPositionalEmbedding
 from .transformer_sentence_encoder_layer import TransformerSentenceEncoderLayer
 from .transformer_sentence_encoder import TransformerSentenceEncoder
 from .unfold import unfold1d
-from .transformer_layer import TransformerDecoderLayer, TransformerEncoderLayer
+from .jain_functions import linear, linearUnified, linear_crs, linearUnified_shawn
+from .jain_modules import Linear_meProp, LinearCRS, LinearShawn
+from .transformer_layer import TransformerDecoderLayer, TransformerEncoderLayer, meProp_TransformerEncoderLayer_NoQuant, CRS_TransformerEncoderLayer_NoQuant, TransformerEncoderLayer_NoQuant
 from .vggblock import VGGBlock
 
 __all__ = [
@@ -64,6 +66,10 @@ __all__ = [
     'TransformerSentenceEncoder',
     'TransformerDecoderLayer',
     'TransformerEncoderLayer',
+    'CRS_TransformerEncoderLayer_NoQuant',
+    'TransformerEncoderLayer_NoQuant',
+    'Linear_meProp', 'LinearCRS', 'LinearShawn',
+    'linear', 'linearUnified', 'linear_crs', 'linearUnified_shawn',
     'VGGBlock',
     'unfold1d',
 ]
