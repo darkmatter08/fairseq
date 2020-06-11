@@ -371,7 +371,11 @@ class Trainer(object):
 
         # forward and backward pass
         logging_outputs, sample_size, ooms = [], 0, 0
+        forward_times, backward_times = [], []
         for i, sample in enumerate(samples):
+            # `samples` is a collection of mini-batches
+            # `sample` is a single mini-batch
+            # the number of mini-batches in `samples` is determined by the --update-freq arg.
             sample = self._prepare_sample(sample)
             if sample is None:
                 # when sample is None, run forward/backward on a dummy batch
@@ -398,16 +402,19 @@ class Trainer(object):
 
             try:
                 with maybe_no_sync():
-                    # forward and backward
-                    loss, sample_size_i, logging_output = self.task.train_step(
+                    # forward and backward on a single mini-batch called `sample`
+                    loss, sample_size_i, logging_output, forward_time, backward_time = self.task.train_step(
                         sample=sample,
                         model=self.model,
                         criterion=self.criterion,
                         optimizer=self.optimizer,
                         update_num=self.get_num_updates(),
                         ignore_grad=is_dummy_batch,
+                        return_times=True
                     )
                     del loss
+                    forward_times.append(forward_time)
+                    backward_times.append(backward_time)
 
                 logging_outputs.append(logging_output)
                 sample_size += sample_size_i
@@ -482,7 +489,9 @@ class Trainer(object):
             ):
                 self._check_grad_norms(grad_norm)
 
-            # take an optimization step
+            # Take an optimization step
+            # once per --freq-update steps
+            # This is gradient accumulation to raise the effective batch size.
             self.optimizer.step()
         except FloatingPointError:
             # re-run the forward and backward pass with hooks attached to print out where it fails
@@ -551,6 +560,9 @@ class Trainer(object):
             metrics.log_scalar("loss_scale", self.optimizer.scaler.loss_scale, priority=700, round=0)
 
         metrics.log_stop_time("train_wall")
+
+        logging_output['forward_times'] = forward_times
+        logging_output['backward_times'] = backward_times
 
         return logging_output
 

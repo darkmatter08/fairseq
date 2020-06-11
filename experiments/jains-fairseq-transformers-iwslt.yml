@@ -1,0 +1,70 @@
+description: jains-fairseq-transformers-iwslt
+
+target:
+  cluster: rr1
+  vc: resrchvc
+  # cluster: eu1
+  # vc: msrlabs
+environment:
+  image: pytorch/pytorch:1.4-cuda10.1-cudnn7-devel
+
+storage:
+  shawn:
+    storage_account_name: hpalangivm0
+    container_name: shawn
+    local_dir: /data/home/jains/shawn
+
+code:
+  local_dir: /data/home/jains/Documents/fairseq
+
+search:
+  job_template:
+    name: jains-fairseq-transformers-iwslt
+    sku: G1
+    sku_count: 1
+    command:
+    # - git clone https://github.com/pytorch/fairseq
+    # - cd fairseq
+    - echo {layer_type}
+    # - pip install --editable ./
+    - pip install --user ./
+    # Hack to get fairseq-* CLI tools on PATH, may be caused by --user install?
+    - pip install --user pyarrow
+    - pip install --user fastBPE sacremoses subword_nmt
+    - pip install --user tensorboardX
+    - pip freeze > img_pip_freeze.txt
+    - export PATH=$PATH:/root/.local/bin
+    - >-
+      fairseq-train
+      data-bin/iwslt14.tokenized.de-en
+      --arch transformer_iwslt_de_en --share-decoder-input-output-embed
+      --optimizer adam --adam-betas '(0.9, 0.98)' --clip-norm 0.0
+      --lr 5e-4 --lr-scheduler inverse_sqrt --warmup-updates 4000
+      --dropout 0.3 --weight-decay 0.0001
+      --criterion label_smoothed_cross_entropy --label-smoothing 0.1
+      --max-tokens 4096
+      --eval-bleu
+      --eval-bleu-detok moses
+      --eval-bleu-remove-bpe
+      --eval-bleu-print-samples
+      --best-checkpoint-metric bleu --maximize-best-checkpoint-metric
+      --tensorboard-logdir /mnt/shawn/logs
+      --max-epoch 2
+    - >-
+      fairseq-generate data-bin/iwslt14.tokenized.de-en
+      --path checkpoints/checkpoint_best.pt
+      --batch-size 128 --beam 5 --remove-bpe
+      --tensorboard-logdir /mnt/shawn/logs
+    - bash
+    submit_args:
+      container_args:
+        shm_size: 128G
+  type: grid
+  max_trials: 20
+  params:
+    - name: layer_type
+      spec: discrete
+      values: ['']
+
+
+# --eval-bleu-args '{"beam": 5, "max_len_a": 1.2, "max_len_b": 10}' \

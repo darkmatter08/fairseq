@@ -315,7 +315,7 @@ class FairseqTask(object):
         )
 
     def train_step(
-        self, sample, model, criterion, optimizer, update_num, ignore_grad=False
+        self, sample, model, criterion, optimizer, update_num, ignore_grad=False, return_times=False
     ):
         """
         Do forward and backward, and return the loss as computed by *criterion*
@@ -342,15 +342,31 @@ class FairseqTask(object):
         # Hack it in -- same style as meProp. Propogate up the stack.
         model.train()
         model.set_num_updates(update_num)
-        # note; doesn't account for cuda call times; not synchronized. 
-        metrics.log_start_time("model_forward", priority=800, round=4)
+
+        start = torch.cuda.Event(True)
+        end = torch.cuda.Event(True)
+
+        start.record()
         loss, sample_size, logging_output = criterion(model, sample)
-        metrics.log_stop_time("model_forward")
+        end.record()
+        end.synchronize()
+        # time in ms -- https://pytorch.org/docs/master/cuda.html#torch.cuda.Event.elapsed_time
+        forward_time = start.elapsed_time(end)
+        metrics.log_scalar(key='model_forward', value=forward_time)
+
         if ignore_grad:
             loss *= 0
-        metrics.log_start_time("model_backward", priority=800, round=4)
+
+        start.record()
         optimizer.backward(loss)
-        metrics.log_stop_time("model_backward")
+        end.record()
+        end.synchronize()
+        # time in ms -- https://pytorch.org/docs/master/cuda.html#torch.cuda.Event.elapsed_time
+        backward_time = start.elapsed_time(end)
+        metrics.log_scalar(key='model_backward', value=backward_time)
+
+        if return_times:
+            return loss, sample_size, logging_output, forward_time, backward_time
         return loss, sample_size, logging_output
 
     def valid_step(self, sample, model, criterion):

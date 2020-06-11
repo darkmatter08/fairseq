@@ -201,11 +201,14 @@ def train(args, trainer, task, epoch_itr):
 
     valid_subsets = args.valid_subset.split(',')
     should_stop = False
+    forward_times, backward_times = [], []
     for samples in progress:
         with metrics.aggregate('train_inner'):
             log_output = trainer.train_step(samples)
             if log_output is None:  # OOM, overflow, ...
                 continue
+            forward_times += log_output['forward_times']
+            backward_times += log_output['backward_times']
 
         # log mid-epoch stats
         num_updates = trainer.get_num_updates()
@@ -223,6 +226,26 @@ def train(args, trainer, task, epoch_itr):
         )
         if should_stop:
             break
+
+    forward_times, backward_times = map(torch.tensor, (forward_times, backward_times))
+    forward_time_sum = torch.sum(forward_times)
+    forward_time_mean = torch.mean(forward_times)
+    forward_time_std = torch.std(forward_times)
+    backward_time_sum = torch.sum(backward_times)
+    backward_time_mean = torch.mean(backward_times)
+    backward_time_std = torch.std(backward_times)
+    metrics.log_scalar("forward_time_sum",  forward_time_sum, priority=700, round=4)
+    print("forward_time_sum={:+.4f}".format(forward_time_sum))
+    metrics.log_scalar("forward_time_mean", forward_time_mean, priority=700, round=4)
+    print("forward_time_mean={:+.4f}".format(forward_time_mean))
+    metrics.log_scalar("forward_time_std",  forward_time_std, priority=700, round=4)
+    print("forward_time_std={:+.4f}".format(forward_time_std))
+    metrics.log_scalar("backward_time_sum",  backward_time_sum, priority=700, round=4)
+    print("backward_time_sum={:+.4f}".format(backward_time_sum))
+    metrics.log_scalar("backward_time_mean", backward_time_mean, priority=700, round=4)
+    print("backward_time_mean={:+.4f}".format(backward_time_mean))
+    metrics.log_scalar("backward_time_std",  backward_time_std, priority=700, round=4)
+    print("backward_time_std={:+.4f}".format(backward_time_std))
 
     # log end-of-epoch stats
     stats = get_training_stats(metrics.get_smoothed_values('train'))
