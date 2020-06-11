@@ -492,7 +492,15 @@ class Trainer(object):
             # Take an optimization step
             # once per --freq-update steps
             # This is gradient accumulation to raise the effective batch size.
+
+            start = torch.cuda.Event(True)
+            end = torch.cuda.Event(True)
+            start.record()
             self.optimizer.step()
+            end.record()
+            end.synchronize()
+            step_time = start.elapsed_time(end)
+
         except FloatingPointError:
             # re-run the forward and backward pass with hooks attached to print out where it fails
             with NanDetector(self.model):
@@ -563,6 +571,7 @@ class Trainer(object):
 
         logging_output['forward_times'] = forward_times
         logging_output['backward_times'] = backward_times
+        logging_output['step_times'] = [step_time]
 
         return logging_output
 

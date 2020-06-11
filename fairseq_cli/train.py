@@ -201,7 +201,7 @@ def train(args, trainer, task, epoch_itr):
 
     valid_subsets = args.valid_subset.split(',')
     should_stop = False
-    forward_times, backward_times = [], []
+    forward_times, backward_times, step_times = [], [], []
     for samples in progress:
         with metrics.aggregate('train_inner'):
             log_output = trainer.train_step(samples)
@@ -209,6 +209,7 @@ def train(args, trainer, task, epoch_itr):
                 continue
             forward_times += log_output['forward_times']
             backward_times += log_output['backward_times']
+            step_times += log_output['step_times']
 
         # log mid-epoch stats
         num_updates = trainer.get_num_updates()
@@ -227,25 +228,41 @@ def train(args, trainer, task, epoch_itr):
         if should_stop:
             break
 
-    forward_times, backward_times = map(torch.tensor, (forward_times, backward_times))
+    # TODO(jains) clean up
+    forward_times, backward_times, step_times = map(torch.tensor, (forward_times, backward_times, step_times))
     forward_time_sum = torch.sum(forward_times)
     forward_time_mean = torch.mean(forward_times)
     forward_time_std = torch.std(forward_times)
     backward_time_sum = torch.sum(backward_times)
     backward_time_mean = torch.mean(backward_times)
     backward_time_std = torch.std(backward_times)
+    step_time_sum = torch.sum(step_times)
+    step_time_mean = torch.mean(step_times)
+    step_time_std = torch.std(step_times)
+
     metrics.log_scalar("forward_time_sum",  forward_time_sum, priority=700, round=4)
-    print("forward_time_sum={:+.4f}".format(forward_time_sum))
+    print("forward_time_sum={:.4f}".format(forward_time_sum))
     metrics.log_scalar("forward_time_mean", forward_time_mean, priority=700, round=4)
-    print("forward_time_mean={:+.4f}".format(forward_time_mean))
+    print("forward_time_mean={:.4f}".format(forward_time_mean))
     metrics.log_scalar("forward_time_std",  forward_time_std, priority=700, round=4)
-    print("forward_time_std={:+.4f}".format(forward_time_std))
+    print("forward_time_std={:.4f}".format(forward_time_std))
+
     metrics.log_scalar("backward_time_sum",  backward_time_sum, priority=700, round=4)
-    print("backward_time_sum={:+.4f}".format(backward_time_sum))
+    print("backward_time_sum={:.4f}".format(backward_time_sum))
     metrics.log_scalar("backward_time_mean", backward_time_mean, priority=700, round=4)
-    print("backward_time_mean={:+.4f}".format(backward_time_mean))
+    print("backward_time_mean={:.4f}".format(backward_time_mean))
     metrics.log_scalar("backward_time_std",  backward_time_std, priority=700, round=4)
-    print("backward_time_std={:+.4f}".format(backward_time_std))
+    print("backward_time_std={:.4f}".format(backward_time_std))
+
+    metrics.log_scalar("step_time_sum",  step_time_sum, priority=700, round=4)
+    print("step_time_sum={:.4f}".format(step_time_sum))
+    metrics.log_scalar("step_time_mean", step_time_mean, priority=700, round=4)
+    print("step_time_mean={:.4f}".format(step_time_mean))
+    metrics.log_scalar("step_time_std",  step_time_std, priority=700, round=4)
+    print("step_time_std={:.4f}".format(step_time_std))
+
+    metrics.log_scalar("fw_bw_step_time_sum",  forward_time_sum + backward_time_sum + step_time_sum, priority=700, round=4)
+    print("fw_bw_step_time_sum={:.4f}".format(forward_time_sum + backward_time_sum + step_time_sum))
 
     # log end-of-epoch stats
     stats = get_training_stats(metrics.get_smoothed_values('train'))
