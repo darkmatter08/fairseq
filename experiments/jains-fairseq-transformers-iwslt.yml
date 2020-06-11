@@ -25,7 +25,6 @@ search:
     command:
     # - git clone https://github.com/pytorch/fairseq
     # - cd fairseq
-    - echo {layer_type}
     # - pip install --editable ./
     - pip install --user ./
     # Hack to get fairseq-* CLI tools on PATH, may be caused by --user install?
@@ -48,23 +47,25 @@ search:
       --eval-bleu-remove-bpe
       --eval-bleu-print-samples
       --best-checkpoint-metric bleu --maximize-best-checkpoint-metric
-      --tensorboard-logdir /mnt/shawn/logs
+      --tensorboard-logdir {tensorboard_dir}
       --max-epoch 2
     - >-
       fairseq-generate data-bin/iwslt14.tokenized.de-en
       --path checkpoints/checkpoint_best.pt
       --batch-size 128 --beam 5 --remove-bpe
-      --tensorboard-logdir /mnt/shawn/logs
-    - bash
+      --tensorboard-logdir {tensorboard_dir}
+      --results-path $$PT_OUTPUT_DIR/results_fairseq-generate
+    - echo "results_fairseq-generate:::"
+    - tail $$PT_OUTPUT_DIR/results_fairseq-generate/*
     submit_args:
       container_args:
         shm_size: 128G
   type: grid
   max_trials: 20
   params:
-    - name: layer_type
+    - name: tensorboard_dir
       spec: discrete
-      values: ['']
+      values: ['$$PT_OUTPUT_DIR/logs']
 
 
 # --eval-bleu-args '{"beam": 5, "max_len_a": 1.2, "max_len_b": 10}' \
