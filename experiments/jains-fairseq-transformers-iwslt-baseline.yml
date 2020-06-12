@@ -1,4 +1,4 @@
-description: jains-fairseq-transformers-iwslt
+description: jains-fairseq-transformers-iwslt-baseline
 
 target:
   cluster: rr1
@@ -19,7 +19,7 @@ code:
 
 search:
   job_template:
-    name: jains-fairseq-transformers-iwslt__encoder_experiment_layer_idx_{encoder_experiment_layer_idx}__layer_type_{layer_type}__k_{k}
+    name: jains-fairseq-transformers-iwslt-baseline
     sku: G1
     sku_count: 1
     command:
@@ -36,10 +36,7 @@ search:
     - >-
       python -W ignore $$(which fairseq-train)
       data-bin/iwslt14.tokenized.de-en
-      --arch transformer_iwslt_de_en_JAIN
-      --encoder_experiment_layer_idx {encoder_experiment_layer_idx}
-      --encoder_experiment_layer_type {layer_type}
-      --k {k}
+      --arch transformer_iwslt_de_en
       --share-decoder-input-output-embed
       --optimizer adam --adam-betas '(0.9, 0.98)' --clip-norm 0.0
       --lr 5e-4 --lr-scheduler inverse_sqrt --warmup-updates 4000
@@ -66,36 +63,11 @@ search:
       container_args:
         shm_size: 128G
   type: grid
-  max_trials: 25
+  max_trials: 20
   params:
     - name: tensorboard_dir
       spec: discrete
       values: ['$$PT_OUTPUT_DIR/logs']
-    - name: encoder_experiment_layer_idx
-      spec: discrete
-      values: ['1', '1,2', '1,2,3', '1,2,3,4', '1,2,3,4,5']
-    - name: layer_type
-      spec: discrete
-      values: ['meProp_unified', 'shawn_unified', 'crs --strategy det_top_k', 'crs --strategy random', 'crs --strategy nps']
-    - name: k
-      spec: discrete
-      values: ['0']
-      # values: ['64', ''128', '256', '512', '0']
+
 
 # --eval-bleu-args '{"beam": 5, "max_len_a": 1.2, "max_len_b": 10}' \
-
-
-# WORKS:
-# --arch transformer_iwslt_de_en_JAIN
-# --encoder_experiment_layer_idx 0,1,2
-# --encoder_experiment_layer_type {meProp_unified, meProp}
-# --strategy det_top_k
-# --k 99
-
-# --arch transformer_iwslt_de_en_JAIN
-# --encoder_experiment_layer_idx 0,1,2
-# --encoder_experiment_layer_type {crs}
-# --strategy {det_top_k, nps, random}
-# --k 99
-
-
