@@ -31,8 +31,14 @@ search:
     - pip install --user fastBPE sacremoses subword_nmt
     - pip install --user tensorboardX
     - pip freeze > img_pip_freeze.txt
+    - export TRAINBIN=$$(which fairseq-train)
+    - echo TRAINBIN
+    - echo $$TRAINBIN
     # Hack to get fairseq-* CLI tools on PATH, may be caused by --user install?
-    - export PATH=$$PATH:/root/.local/bin
+    - export PATH=$$PATH:/root/.local/bin:/home/jains/.local/bin
+    - export TRAINBIN=$$(which fairseq-train)
+    - echo TRAINBIN
+    - echo $$TRAINBIN
     - >-
       python -W ignore $$(which fairseq-train)
       data-bin/iwslt14.tokenized.de-en
@@ -52,7 +58,7 @@ search:
       --eval-bleu-print-samples
       --best-checkpoint-metric bleu --maximize-best-checkpoint-metric
       --tensorboard-logdir {tensorboard_dir}
-      --max-epoch 2
+      --max-epoch 20
     - >-
       fairseq-generate data-bin/iwslt14.tokenized.de-en
       --path checkpoints/checkpoint_best.pt
@@ -61,12 +67,11 @@ search:
       --results-path $$PT_OUTPUT_DIR/results_fairseq-generate
     - echo "results_fairseq-generate:::"
     - tail $$PT_OUTPUT_DIR/results_fairseq-generate/*
-    - bash
     submit_args:
       container_args:
         shm_size: 128G
   type: grid
-  max_trials: 25
+  max_trials: 100
   params:
     - name: tensorboard_dir
       spec: discrete
@@ -79,7 +84,8 @@ search:
       values: ['meProp_unified', 'shawn_unified', 'crs --strategy det_top_k', 'crs --strategy random', 'crs --strategy nps']
     - name: k
       spec: discrete
-      values: ['0']
+      values: ['64', '128', '256', '512']
+      # values: ['0']
       # values: ['64', ''128', '256', '512', '0']
 
 # --eval-bleu-args '{"beam": 5, "max_len_a": 1.2, "max_len_b": 10}' \

@@ -32,7 +32,7 @@ search:
     - pip install --user tensorboardX
     - pip freeze > img_pip_freeze.txt
     # Hack to get fairseq-* CLI tools on PATH, may be caused by --user install?
-    - export PATH=$$PATH:/root/.local/bin
+    - export PATH=$$PATH:/root/.local/bin:/home/jains/.local/bin
     - >-
       python -W ignore $$(which fairseq-train)
       data-bin/iwslt14.tokenized.de-en
@@ -49,7 +49,7 @@ search:
       --eval-bleu-print-samples
       --best-checkpoint-metric bleu --maximize-best-checkpoint-metric
       --tensorboard-logdir {tensorboard_dir}
-      --max-epoch 2
+      --max-epoch 20
     - >-
       fairseq-generate data-bin/iwslt14.tokenized.de-en
       --path checkpoints/checkpoint_best.pt
@@ -58,7 +58,6 @@ search:
       --results-path $$PT_OUTPUT_DIR/results_fairseq-generate
     - echo "results_fairseq-generate:::"
     - tail $$PT_OUTPUT_DIR/results_fairseq-generate/*
-    - bash
     submit_args:
       container_args:
         shm_size: 128G
