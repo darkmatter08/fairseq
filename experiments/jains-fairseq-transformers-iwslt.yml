@@ -34,9 +34,14 @@ search:
     # Hack to get fairseq-* CLI tools on PATH, may be caused by --user install?
     - export PATH=$$PATH:/root/.local/bin
     - >-
-      fairseq-train
+      python -W ignore $$(which fairseq-train)
       data-bin/iwslt14.tokenized.de-en
-      --arch transformer_iwslt_de_en --share-decoder-input-output-embed
+      --arch transformer_iwslt_de_en_JAIN
+      --encoder_experiment_layer_idx 0,1,2
+      --encoder_experiment_layer_type meProp
+      --strategy det_top_k
+      --k 99
+      --share-decoder-input-output-embed
       --optimizer adam --adam-betas '(0.9, 0.98)' --clip-norm 0.0
       --lr 5e-4 --lr-scheduler inverse_sqrt --warmup-updates 4000
       --dropout 0.3 --weight-decay 0.0001
@@ -70,3 +75,19 @@ search:
 
 
 # --eval-bleu-args '{"beam": 5, "max_len_a": 1.2, "max_len_b": 10}' \
+
+
+# WORKS:
+# --arch transformer_iwslt_de_en_JAIN
+# --encoder_experiment_layer_idx 0,1,2
+# --encoder_experiment_layer_type {meProp_unified, meProp}
+# --strategy det_top_k
+# --k 99
+
+# --arch transformer_iwslt_de_en_JAIN
+# --encoder_experiment_layer_idx 0,1,2
+# --encoder_experiment_layer_type {crs}
+# --strategy {det_top_k, nps, random}
+# --k 99
+
+

@@ -36,17 +36,27 @@ class Linear_meProp(nn.Module):
 
     def forward(self, x):
         # Note: Need to modify this to work with 3-tensor inputs -- see LinearCRS.forward()
+        input_shape = x.shape
+        if len(input_shape) > 2:
+            # TODO fix this shaping for linear_meProp. conventions around w shape are different.
+            common_dim = input_shape[-1]
+            assert common_dim == self.w.shape[0]  # since we multiply with w
+            outer_dim = torch.prod(torch.tensor(input_shape[:-1]))
+            x = x.reshape(outer_dim, common_dim)
         if self.unified:
-            return linearUnified(self.k)(x, self.w, self.b)
+            result = linearUnified(self.k)(x, self.w, self.b)
         else:
-            return linear(self.k)(x, self.w, self.b)
+            result = linear(self.k)(x, self.w, self.b)
+        if len(input_shape) > 2:
+            result = result.reshape(input_shape[:-1] + (self.w.shape[-1],))
+        return result
 
     def __repr__(self):
         if self.unified:
             layer_description = 'unified'
         else:
             layer_description = ''
-        return '{} ({} -> {} <- {}{})'.format(self.__class__.__name__,
+        return '{} ({} -> {} <- {}k={})'.format(self.__class__.__name__,
                                               self.in_, self.out_, layer_description, self.k)
 
 
@@ -90,6 +100,7 @@ class LinearCRS(nn.Module):
         return result
 
     def __repr__(self):
+        # TODO add strategy.
         return '{} ({} -> {} <- {}{})'.format(self.__class__.__name__, self.in_, self.out_, 'CRS, k=', self.k)
 
 

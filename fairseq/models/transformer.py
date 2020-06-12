@@ -28,6 +28,7 @@ from fairseq.modules import (
     TransformerEncoderLayer,
     CRS_TransformerEncoderLayer_NoQuant,
     TransformerEncoderLayer_NoQuant,
+    meProp_TransformerEncoderLayer_NoQuant,
 )
 from fairseq.modules.quant_noise import quant_noise as apply_quant_noise_
 from torch import Tensor
@@ -174,6 +175,19 @@ class TransformerModel(FairseqEncoderDecoderModel):
                             help='block size of quantization noise at training time')
         parser.add_argument('--quant-noise-scalar', type=float, metavar='D', default=0,
                             help='scalar quantization noise and scalar quantization at training time')
+        # args for JAIN's experiment -- approximate tensor operations.
+        parser.add_argument('--encoder_experiment_layer_idx', default=None, type=str, metavar='N',
+                            help='which layers in the encoder to use experimental layers.'
+                            'Comma separated values, i.e. `0,1,2,5`. -1 means all layers')
+        parser.add_argument('--encoder_experiment_layer_type', default='unified', type=str, metavar='N',
+                            choices=['meProp', 'meProp_unified', 'shawn_unified', 'crs'],
+                            help='which experimental layer type to use.')
+        parser.add_argument('--strategy', default='det_top_k',
+                            choices=('random', 'det_top_k', 'nps'),
+                            help='CRS sampling strategy. Only used if `--layer_type crs` is set.')
+        parser.add_argument('--k', default=80, type=int,
+                            help='k in meProp (if invalid, e.g. 0, do not use meProp).'
+                            'Only used for experimental layers.')
         # fmt: on
 
     @classmethod
@@ -349,12 +363,32 @@ class TransformerEncoder(FairseqEncoder):
         else:
             self.layers = nn.ModuleList([])
         # TODO(jains) swap to different build_encoder_layer() calls depending on exact layers.
-        # based on arg with --experiment_layer_idx
-        # --experiment_layer_type crs_det_top_k
-        self.layers.extend([
-            self.build_encoder_layer(args)
-            for i in range(args.encoder_layers)
-        ])
+        # --encoder_experiment_layer_idx, --encoder_experiment_layer_type, --strategy, --k
+        print(args)
+        if args.encoder_experiment_layer_idx is None:
+            # VERIFIED: this code path triggers with `--arch transformer_iwslt_de_en`
+            self.layers.extend([
+                self.build_encoder_layer(args)
+                for i in range(args.encoder_layers)
+            ])
+        else:
+            # TODO verify this code path triggers ONLY with `--arch transformer_iwslt_de_en_JAIN`
+            experiment_layers = map(int, args.encoder_experiment_layer_idx.split(','))
+            for i in range(args.encoder_layers):
+                if i in experiment_layers or experiment_layers==[-1]:
+                    # -1 means all layers are experimental.
+                    assert args.k is not None
+                    if args.encoder_experiment_layer_type == 'crs':
+                        assert args.strategy is not None
+                        specific_layer = CRS_TransformerEncoderLayer_NoQuant(args)
+                    elif args.encoder_experiment_layer_type in ('meProp', 'meProp_unified'):
+                        specific_layer = meProp_TransformerEncoderLayer_NoQuant(args)
+                    elif args.encoder_experiment_layer_type == 'shawn_unified':
+                        raise NotImplementedError
+                else:
+                    specific_layer = self.build_encoder_layer(args)
+                self.layers.extend([specific_layer])
+
         self.num_layers = len(self.layers)
 
         if args.encoder_normalize_before:
@@ -367,9 +401,9 @@ class TransformerEncoder(FairseqEncoder):
             self.layernorm_embedding = None
 
     def build_encoder_layer(self, args):
+        return TransformerEncoderLayer_NoQuant(args)
         # return TransformerEncoderLayer(args)
-        return CRS_TransformerEncoderLayer_NoQuant(args)
-        # return TransformerEncoderLayer_NoQuant(args)
+        # return CRS_TransformerEncoderLayer_NoQuant(args)
 
     def forward_embedding(self, src_tokens):
         # embed tokens and positions
@@ -946,6 +980,19 @@ def transformer_iwslt_de_en(args):
     args.decoder_attention_heads = getattr(args, "decoder_attention_heads", 4)
     args.decoder_layers = getattr(args, "decoder_layers", 6)
     base_architecture(args)
+
+
+@register_model_architecture("transformer", "transformer_iwslt_de_en_JAIN")
+def transformer_iwslt_de_en_JAIN(args):
+    # TODO(jains) register a new model arch with args:
+    # --experiment_layer_idx <int up to --encoder_layers>
+    # and --experiment_layer_type options={'crs_det_top_k', 'crs_nps', 'crs_random', 'meProp', 'meProp_unified', 'shawn_unified'}
+    # and --k <int_value>
+    args.encoder_experiment_layer_idx = getattr(args, "encoder_experiment_layer_idx", '-1')
+    args.encoder_experiment_layer_type = getattr(args, "encoder_experiment_layer_type", 'unified')
+    args.strategy = getattr(args, "strategy", 'det_top_k')
+    args.k = getattr(args, "k", 180)
+    transformer_iwslt_de_en(args)
 
 
 @register_model_architecture("transformer", "transformer_wmt_en_de")
