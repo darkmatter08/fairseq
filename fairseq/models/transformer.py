@@ -373,7 +373,7 @@ class TransformerEncoder(FairseqEncoder):
             ])
         else:
             # TODO verify this code path triggers ONLY with `--arch transformer_iwslt_de_en_JAIN`
-            experiment_layers = map(int, args.encoder_experiment_layer_idx.split(','))
+            experiment_layers = list(map(int, args.encoder_experiment_layer_idx.split(',')))
             for i in range(args.encoder_layers):
                 if i in experiment_layers or experiment_layers==[-1]:
                     # -1 means all layers are experimental.
