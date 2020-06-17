@@ -49,7 +49,7 @@ search:
       --eval-bleu-print-samples
       --best-checkpoint-metric bleu --maximize-best-checkpoint-metric
       --tensorboard-logdir {tensorboard_dir}
-      --max-epoch 20
+      --max-epoch 120
     - >-
       fairseq-generate data-bin/iwslt14.tokenized.de-en
       --path checkpoints/checkpoint_best.pt

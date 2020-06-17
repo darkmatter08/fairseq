@@ -183,7 +183,7 @@ class TransformerModel(FairseqEncoderDecoderModel):
                             choices=['meProp', 'meProp_unified', 'shawn_unified', 'crs'],
                             help='which experimental layer type to use.')
         parser.add_argument('--strategy', default='det_top_k',
-                            choices=('random', 'det_top_k', 'nps'),
+                            choices=('random', 'det_top_k', 'nps', 'first_k'),
                             help='CRS sampling strategy. Only used if `--layer_type crs` is set.')
         parser.add_argument('--k', default=80, type=int,
                             help='k in meProp (if invalid, e.g. 0, do not use meProp).'

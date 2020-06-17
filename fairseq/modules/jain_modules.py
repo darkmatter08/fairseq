@@ -8,7 +8,11 @@ import torch.nn as nn
 
 from torch.nn.parameter import Parameter
 
-from .jain_functions import linear, linearUnified, linear_crs, linearUnified_shawn
+try:
+    from .jain_functions import linear, linearUnified, linear_crs, linearUnified_shawn
+except ImportError:  # TODO Testing purposes only, remove...
+    from jain_functions import linear, linearUnified, linear_crs, linearUnified_shawn
+
 
 
 class Linear_meProp(nn.Module):
@@ -56,7 +60,7 @@ class Linear_meProp(nn.Module):
             layer_description = 'unified'
         else:
             layer_description = ''
-        return '{} ({} -> {} <- {}k={})'.format(self.__class__.__name__,
+        return '{} ({} -> {} <- {} k={})'.format(self.__class__.__name__,
                                               self.in_, self.out_, layer_description, self.k)
 
 
@@ -101,7 +105,7 @@ class LinearCRS(nn.Module):
 
     def __repr__(self):
         # TODO add strategy.
-        return '{} ({} -> {} <- {}{})'.format(self.__class__.__name__, self.in_, self.out_, 'CRS, k=', self.k)
+        return '{} ({} -> {} <- {}{})'.format(self.__class__.__name__, self.in_, self.out_, 'CRS strategy={}, k='.format(self.strategy), self.k)
 
 
 class LinearShawn(nn.Module):

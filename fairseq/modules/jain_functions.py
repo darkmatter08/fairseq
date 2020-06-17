@@ -364,7 +364,7 @@ class linear_crs(Function):
 def crs_mm(A, B, k, strategy='random'):
     """ Returns A @ B, computed using `k` outer products.
     `k` <= A.shape[1] == B.shape[0]
-    `strategy` in ('random', 'det_top_k', 'nps')
+    `strategy` in ('random', 'det_top_k', 'nps', 'first_k')
     """
 
     assert A.shape[1] == B.shape[0]
@@ -437,6 +437,11 @@ def crs_mm(A, B, k, strategy='random'):
         if 0:  # scaling seems to improve error metric...
             scaling = 1 / (k * p_i)
             scaling = torch.diag(scaling[indexes])
+    elif strategy == 'first_k':
+        # This strategy is for testing only -- a best-case runtime if we optimized away topk, norm, etc...
+        indexes = torch.arange(k)
+        # Scale by 1 / (k*p_i)  # Eq. 1 in [1]
+        scaling = 1 / (k * 1/common_dimension)
     else:
         raise NotImplementedError
 

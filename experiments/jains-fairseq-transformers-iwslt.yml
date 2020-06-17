@@ -58,7 +58,7 @@ search:
       --eval-bleu-print-samples
       --best-checkpoint-metric bleu --maximize-best-checkpoint-metric
       --tensorboard-logdir {tensorboard_dir}
-      --max-epoch 20
+      --max-epoch 120
     - >-
       fairseq-generate data-bin/iwslt14.tokenized.de-en
       --path checkpoints/checkpoint_best.pt
@@ -78,10 +78,12 @@ search:
       values: ['$$PT_OUTPUT_DIR/logs']
     - name: encoder_experiment_layer_idx
       spec: discrete
-      values: ['1', '1,2', '1,2,3', '1,2,3,4', '1,2,3,4,5']
+      values: ['0,1,2,3,4,5']
+      # values: ['0', '0,1', '0,1,2', '0,1,2,3', '0,1,2,3,4', '0,1,2,3,4,5']
     - name: layer_type
       spec: discrete
-      values: ['meProp_unified', 'shawn_unified', 'crs --strategy det_top_k', 'crs --strategy random', 'crs --strategy nps']
+      values: ['crs --strategy first_k']
+      # values: ['meProp_unified', 'shawn_unified', 'crs --strategy det_top_k', 'crs --strategy random', 'crs --strategy nps']
     - name: k
       spec: discrete
       values: ['64', '128', '256', '512']
