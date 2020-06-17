@@ -456,12 +456,22 @@ class TransformerEncoder(FairseqEncoder):
 
         encoder_states = [] if return_all_hiddens else None
 
+        encoder_layer_times = []
+        start = torch.cuda.Event(True)
+        end = torch.cuda.Event(True)
         # encoder layers
         for layer in self.layers:
+            start.record()
             x = layer(x, encoder_padding_mask)
+            end.record()
+            end.synchronize()
+            encoder_layer_time = start.elapsed_time(end)
+            encoder_layer_times.append(encoder_layer_time)
             if return_all_hiddens:
                 assert encoder_states is not None
                 encoder_states.append(x)
+        print('encoder_layer_times_mean={}'.format(torch.mean(torch.tensor(encoder_layer_times))))
+        print('encoder_layer_times_len={}'.format(len(encoder_layer_times)))
 
         if self.layer_norm is not None:
             x = self.layer_norm(x)

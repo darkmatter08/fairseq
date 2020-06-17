@@ -1,0 +1,175 @@
+from fairseq.modules import TransformerEncoderLayer_NoQuant
+from argparse import Namespace
+import torch
+
+args = Namespace(activation_dropout=0.0, activation_fn='relu', adam_betas='(0.9, 0.98)', adam_eps=1e-08, adaptive_input=False, adaptive_softmax_cutoff=None, adaptive_softmax_dropout=0, all_gather_list_size=16384, arch='transformer_iwslt_de_en', attention_dropout=0.0, best_checkpoint_metric='bleu', bf16=False, bpe=None, broadcast_buffers=False, bucket_cap_mb=25, checkpoint_suffix='', clip_norm=0.0, cpu=False, criterion='label_smoothed_cross_entropy', cross_self_attention=False, curriculum=0, data='data-bin/iwslt14.tokenized.de-en', data_buffer_size=2, dataset_impl=None, ddp_backend='c10d', decoder_attention_heads=4, decoder_embed_dim=512, decoder_embed_path=None, decoder_ffn_embed_dim=1024, decoder_input_dim=512, decoder_layerdrop=0, decoder_layers=6, decoder_layers_to_keep=None, decoder_learned_pos=False, decoder_normalize_before=False, decoder_output_dim=512, device_id=0, disable_validation=False, distributed_backend='nccl', distributed_init_method=None, distributed_no_spawn=False, distributed_port=-1, distributed_rank=0, distributed_world_size=1, distributed_wrapper='DDP', dropout=0.3, empty_cache_freq=0, encoder_attention_heads=4, encoder_embed_dim=512, encoder_embed_path=None, encoder_experiment_layer_idx=None, encoder_experiment_layer_type='unified', encoder_ffn_embed_dim=1024, encoder_layerdrop=0, encoder_layers=6, encoder_layers_to_keep=None, encoder_learned_pos=False, encoder_normalize_before=False, eval_bleu=True, eval_bleu_args=None, eval_bleu_detok='moses', eval_bleu_detok_args=None, eval_bleu_print_samples=True, eval_bleu_remove_bpe='@@ ', eval_tokenized_bleu=False, fast_stat_sync=False, find_unused_parameters=False, fix_batches_to_gpus=False, fixed_validation_seed=None, fp16=False, fp16_init_scale=128, fp16_no_flatten_grads=False, fp16_scale_tolerance=0.0, fp16_scale_window=None, k=80, keep_best_checkpoints=-1, keep_interval_updates=-1, keep_last_epochs=-1, label_smoothing=0.1, layernorm_embedding=False, left_pad_source=True, left_pad_target=False, load_alignments=False, localsgd_frequency=3, log_format=None, log_interval=100, lr=[0.0005], lr_scheduler='inverse_sqrt', max_epoch=20, max_sentences=None, max_sentences_valid=None, max_source_positions=1024, max_target_positions=1024, max_tokens=4096, max_tokens_valid=4096, max_update=0, maximize_best_checkpoint_metric=True, memory_efficient_bf16=False, memory_efficient_fp16=False, min_loss_scale=0.0001, min_lr=-1, model_parallel_size=1, no_cross_attention=False, no_epoch_checkpoints=False, no_last_checkpoints=False, no_progress_bar=False, no_save=False, no_save_optimizer_state=False, no_scale_embedding=False, no_token_positional_embeddings=False, nprocs_per_node=1, num_workers=1, optimizer='adam', optimizer_overrides='{}', patience=-1, quant_noise_pq=0, quant_noise_pq_block_size=8, quant_noise_scalar=0, quantization_config_path=None, required_batch_size_multiple=8, reset_dataloader=False, reset_lr_scheduler=False, reset_meters=False, reset_optimizer=False, restore_file='checkpoint_last.pt', save_dir='checkpoints', save_interval=1, save_interval_updates=0, seed=1, sentence_avg=False, share_all_embeddings=False, share_decoder_input_output_embed=True, skip_invalid_size_inputs_valid_test=False, slowmo_algorithm='LocalSGD', slowmo_momentum=None, source_lang='de', strategy='det_top_k', target_lang='en', task='translation', tensorboard_logdir='/mnt/output/projects/local/_local-run.temp/pt-results//logs', threshold_loss_scale=None, tie_adaptive_weights=False, tokenizer=None, tpu=False, train_subset='train', truncate_source=False, update_freq=[1], upsample_primary=1, use_bmuf=False, use_old_adam=False, user_dir=None, valid_subset='valid', validate_interval=1, warmup_init_lr=0, warmup_updates=4000, weight_decay=0.0001)
+
+encoder_layer = TransformerEncoderLayer_NoQuant(args)
+encoder_layer = encoder_layer.cuda()
+
+x0 = torch.load('/mnt/shawn/x0.pt')
+encoder_padding_mask0 = torch.load('/mnt/shawn/encoder_padding_mask0.pt')
+
+x0 = x0.cuda()
+encoder_padding_mask0 = encoder_padding_mask0.cuda()
+
+result = encoder_layer(x0, encoder_padding_mask0)
+
+loss = result.view(-1).sum()
+
+loss.backward()
+## how can we profile FC and self-attention elements separately in backward()? There's no explicit definition. Constructed implicitly.
+## We could break down the two operations and feed them fake data, and time them separately.
+
+
+# need to extract args and (x, encoder_padding_mask) values.
+
+or profile this code directly? Profiling is a bad idea, we need overall runtime, not micro-op breakdown.
+
+# now add timers into the code and test it out...
+# do we need to test out backward() as well?
+# We should test backward() at least one time.
+
+
+epoch 001: 100%|▉| 1100/1101 [04:08<00:00,  4.33it/s, self_attn=1.95054, mean_self_attn=1.995724081993103, sum_self_attn=2096.4619140625, std_self_attn=1.6040208339691162, len_self_attn=1050.5, fc_time=1.37498, mean_fc=1.37813401222229, sum_fc=1447.720458984375, std_fc=0.20827804505825043, len_fc=1050.5, model_forward=67.8544, model_backward=110.374, loss=8.482, nll_loss=7.781, ppl=219.94, wps=15782.1, ups=4.43, wpb=3561.1, bsz=141.1, num_updates=1100, lr=0.0001375, gnorm=1.772, train_wall=22, wall=250] 
+
+
+Via Print Statements:
+epoch 001:   3%|██████                                                                                                                                                                                                                                  | 29/1101 [00:07<04:13,  4.23it/s]
+self_attn_time(ms)= 2.3168959617614746
+self_attn_time_mean(ms)= tensor(9.6662)
+self_attn_time_sum(ms)= tensor(289.9850)
+self_attn_time_std(ms)= tensor(40.0328)
+self_attn_time(ms)= 2.1091198921203613
+self_attn_time_mean(ms)= tensor(2.0419)
+self_attn_time_sum(ms)= tensor(61.2573)
+self_attn_time_std(ms)= tensor(0.2332)
+self_attn_time(ms)= 2.1073598861694336
+self_attn_time_mean(ms)= tensor(2.0364)
+self_attn_time_sum(ms)= tensor(61.0926)
+self_attn_time_std(ms)= tensor(0.2359)
+self_attn_time(ms)= 2.2007040977478027
+self_attn_time_mean(ms)= tensor(2.0480)
+self_attn_time_sum(ms)= tensor(61.4386)
+self_attn_time_std(ms)= tensor(0.2459)
+self_attn_time(ms)= 2.1664960384368896
+self_attn_time_mean(ms)= tensor(2.0376)
+self_attn_time_sum(ms)= tensor(61.1294)
+self_attn_time_std(ms)= tensor(0.2304)
+fc_time(ms)= 1.510208010673523
+fc_time_mean(ms)= tensor(1.4601)
+fc_time_sum(ms)= tensor(43.8029)
+fc_time_std(ms)= tensor(0.1634)
+self_attn_time(ms)= 2.094559907913208
+self_attn_time_mean(ms)= tensor(2.0177)
+self_attn_time_sum(ms)= tensor(60.5300)
+self_attn_time_std(ms)= tensor(0.2305)
+fc_time(ms)= 1.5335359573364258
+fc_time_mean(ms)= tensor(1.4670)
+fc_time_sum(ms)= tensor(44.0103)
+fc_time_std(ms)= tensor(0.1661)
+
+self_attn_time(ms) = 2.1073598861694336
+fc_time_mean = 1.4601
+
+
+With full layer forward() runtime as well:
+[66/28856]
+fc_time_std(ms)= tensor(0.1872)
+self_attn_time(ms)= 2.079551935195923
+self_attn_time_mean(ms)= tensor(1.9978)
+fc_time(ms)= 1.5217280387878418
+fc_time_mean(ms)= tensor(1.4474)
+fc_time_sum(ms)= tensor(33.2895)
+fc_time_std(ms)= tensor(0.1995)
+self_attn_time(ms)= 2.117824077606201
+self_attn_time_mean(ms)= tensor(2.0073)
+fc_time(ms)= 1.5404160022735596
+fc_time_mean(ms)= tensor(1.4448)
+fc_time_sum(ms)= tensor(33.2301)
+fc_time_std(ms)= tensor(0.1889)
+self_attn_time(ms)= 2.169343948364258
+self_attn_time_mean(ms)= tensor(2.0041)
+self_attn_time_sum(ms)= tensor(46.0948)
+self_attn_time_std(ms)= tensor(0.2712)
+fc_time(ms)= 1.5507839918136597
+fc_time_mean(ms)= tensor(1.8574)
+fc_time_sum(ms)= tensor(42.7211)
+fc_time_std(ms)= tensor(1.7969)
+self_attn_time(ms)= 2.071199893951416
+self_attn_time_mean(ms)= tensor(2.1199)
+fc_time(ms)= 1.5104000568389893
+fc_time_mean(ms)= tensor(1.4462)
+fc_time_sum(ms)= tensor(33.2622)
+fc_time_std(ms)= tensor(0.1917)
+self_attn_time(ms)= 2.077984094619751
+self_attn_time_mean(ms)= tensor(2.0013)
+fc_time(ms)= 1.549504041671753
+fc_time_mean(ms)= tensor(1.4429)
+fc_time_sum(ms)= tensor(33.1877)
+fc_time_std(ms)= tensor(0.1957)
+encoder_layer_times_mean=6.652645587921143
+epoch 001:   2%|████▊| 23/1101 [00:05<04:15,  4.21it/s]self_attn_time(ms)= 2.258336067199707
+self_attn_time_mean(ms)= tensor(11.9523)
+fc_time(ms)= 1.494431972503662
+fc_time_mean(ms)= tensor(1.4452)
+fc_time_sum(ms)= tensor(34.6843)
+fc_time_std(ms)= tensor(0.1834) 
+
+
+self_attn_time(ms)= 2.1
+fc_time(ms)= 1.5104000568389893
+self_attn_time_mean(ms)= tensor(2.0041)
+fc_time_mean(ms)= tensor(1.4462)
+self_attn_time_mean + fc_time_mean = 3.5ms 
+encoder_layer_times_mean=6.061759948730469
+2.5ms for non self-attn and non fc computations.
+
+residual = x
+if self.normalize_before:
+    x = self.self_attn_layer_norm(x)
+if attn_mask is not None:
+    attn_mask = attn_mask.masked_fill(attn_mask.to(torch.bool), -1e8)
+
+### self-attn record block
+        x, _ = self.self_attn(
+            query=x,
+            key=x,
+            value=x,
+            key_padding_mask=encoder_padding_mask,
+            attn_mask=attn_mask,
+        )
+
+
+x = F.dropout(x, p=self.dropout, training=self.training)
+x = residual + x
+if not self.normalize_before:
+    x = self.self_attn_layer_norm(x)
+
+residual = x
+if self.normalize_before:
+    x = self.final_layer_norm(x)
+
+### fc time record block
+        x = self.activation_fn(self.fc1(x))
+        x = F.dropout(x, p=float(self.activation_dropout), training=self.training)
+        x = self.fc2(x)
+        x = F.dropout(x, p=self.dropout, training=self.training)
+
+
+x = residual + x
+if not self.normalize_before:
+    x = self.final_layer_norm(x)
+return x
+
+
+Conclusion:
+self_attn takes 50% longer than FC
+i.e
+40% self_attn
+60% fc
+
+Of the overall forward pass for a single layer:
+2.0/6 = 30% time in self-attn
+1.45/6 = 24% time in forward
+

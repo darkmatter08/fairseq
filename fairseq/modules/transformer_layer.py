@@ -11,6 +11,7 @@ import torch.nn.functional as F
 from fairseq import utils
 from fairseq.modules import LayerNorm, MultiheadAttention
 from fairseq.modules.quant_noise import quant_noise
+from fairseq.logging import metrics
 from torch import Tensor
 
 from .jain_modules import Linear_meProp, LinearCRS, LinearShawn
@@ -55,6 +56,10 @@ class TransformerEncoderLayer(nn.Module):
         )
 
         self.final_layer_norm = LayerNorm(self.embed_dim)
+        self.args = args  # TODO remove; debugging purposes only.
+
+        self.self_attn_times = []
+        self.fc_times = []
 
     # TODO(jains): change these defns for approximate matmul methods.
     def build_fc1(self, input_dim, output_dim, q_noise, qn_block_size):
@@ -104,6 +109,11 @@ class TransformerEncoderLayer(nn.Module):
         Returns:
             encoded output of shape `(seq_len, batch, embed_dim)`
         """
+        # import pdb; pdb.set_trace()
+        # overall timer
+        start = torch.cuda.Event(True)
+        end = torch.cuda.Event(True)
+
         residual = x
         if self.normalize_before:
             x = self.self_attn_layer_norm(x)
@@ -117,6 +127,8 @@ class TransformerEncoderLayer(nn.Module):
         # TODO: to formally solve this problem, we need to change fairseq's
         # MultiheadAttention. We will do this later on.
 
+        start.record()
+        # Actual compute to be measured...
         x, _ = self.self_attn(
             query=x,
             key=x,
@@ -124,6 +136,24 @@ class TransformerEncoderLayer(nn.Module):
             key_padding_mask=encoder_padding_mask,
             attn_mask=attn_mask,
         )
+        end.record()
+        end.synchronize()
+        # time in ms -- https://pytorch.org/docs/master/cuda.html#torch.cuda.Event.elapsed_time
+        self_attn_time = start.elapsed_time(end)
+        self.self_attn_times.append(self_attn_time)
+        self_attn_time_mean = torch.mean(torch.tensor(self.self_attn_times))
+        self_attn_time_sum  = torch.sum(torch.tensor(self.self_attn_times))
+        self_attn_time_std  = torch.std(torch.tensor(self.self_attn_times))
+        metrics.log_scalar(key='self_attn', value=self_attn_time)
+        metrics.log_scalar(key='mean_self_attn', value=self_attn_time_mean.item())
+        metrics.log_scalar(key='sum_self_attn', value=self_attn_time_sum.item())
+        metrics.log_scalar(key='std_self_attn', value=self_attn_time_std.item())
+        metrics.log_scalar(key='len_self_attn', value=len(self.self_attn_times))
+        print('self_attn_time(ms)=', self_attn_time)
+        print('self_attn_time_mean(ms)=', self_attn_time_mean)
+        print('self_attn_time_sum(ms)=', self_attn_time_sum)
+        print('self_attn_time_std(ms)=', self_attn_time_std)
+
         x = F.dropout(x, p=self.dropout, training=self.training)
         x = residual + x
         if not self.normalize_before:
@@ -133,10 +163,29 @@ class TransformerEncoderLayer(nn.Module):
         if self.normalize_before:
             x = self.final_layer_norm(x)
 
+        start.record()
         x = self.activation_fn(self.fc1(x))
         x = F.dropout(x, p=float(self.activation_dropout), training=self.training)
         x = self.fc2(x)
         x = F.dropout(x, p=self.dropout, training=self.training)
+
+        end.record()
+        end.synchronize()
+        fc_time = start.elapsed_time(end)
+        self.fc_times.append(fc_time)
+        metrics.log_scalar(key='fc_time', value=fc_time)
+        fc_mean = torch.mean(torch.tensor(self.fc_times))
+        fc_sum  = torch.sum(torch.tensor(self.fc_times))
+        fc_std  = torch.std(torch.tensor(self.fc_times))
+        metrics.log_scalar(key='mean_fc', value=fc_mean.item())
+        metrics.log_scalar(key='sum_fc', value=fc_sum.item())
+        metrics.log_scalar(key='std_fc', value=fc_std.item())
+        metrics.log_scalar(key='len_fc', value=len(self.fc_times))
+        print('fc_time(ms)=', fc_time)
+        print('fc_time_mean(ms)=', torch.mean(torch.tensor(self.fc_times)))
+        print('fc_time_sum(ms)=', torch.sum(torch.tensor(self.fc_times)))
+        print('fc_time_std(ms)=', torch.std(torch.tensor(self.fc_times)))
+
         x = residual + x
         if not self.normalize_before:
             x = self.final_layer_norm(x)
