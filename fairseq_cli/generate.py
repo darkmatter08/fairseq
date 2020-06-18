@@ -66,6 +66,9 @@ def _main(args, output_file):
 
     # Load ensemble
     logger.info('loading model(s) from {}'.format(args.path))
+    # TODO(jains) current working idea is to modify the args such that if --k is present,
+    # override the model with a different k value. If it's not present, use the existing
+    # value from the pretrained model
     models, _model_args = checkpoint_utils.load_model_ensemble(
         utils.split_paths(args.path),
         arg_overrides=eval(args.model_overrides),
@@ -82,6 +85,8 @@ def _main(args, output_file):
             model.half()
         if use_cuda:
             model.cuda()
+        logger.info('model: {}'.format(model))
+        print('model: {}'.format(model))
 
     # Load alignment dictionary for unknown word replacement
     # (None if no unknown word replacement, empty if no path to align dictionary)

@@ -59,14 +59,24 @@ search:
       --best-checkpoint-metric bleu --maximize-best-checkpoint-metric
       --tensorboard-logdir {tensorboard_dir}
       --max-epoch 120
+    - cp checkpoints/checkpoint_best.pt $$PT_OUTPUT_DIR
     - >-
       fairseq-generate data-bin/iwslt14.tokenized.de-en
       --path checkpoints/checkpoint_best.pt
       --batch-size 128 --beam 5 --remove-bpe
       --tensorboard-logdir {tensorboard_dir}
-      --results-path $$PT_OUTPUT_DIR/results_fairseq-generate
+      --results-path $$PT_OUTPUT_DIR/results_fairseq-generate-origmodel
     - echo "results_fairseq-generate:::"
-    - tail $$PT_OUTPUT_DIR/results_fairseq-generate/*
+    - tail $$PT_OUTPUT_DIR/results_fairseq-generate-origmodel/*
+    - >-
+      fairseq-generate data-bin/iwslt14.tokenized.de-en
+      --path checkpoints/checkpoint_best.pt
+      --batch-size 128 --beam 5 --remove-bpe
+      --tensorboard-logdir {tensorboard_dir}
+      --results-path $$PT_OUTPUT_DIR/results_fairseq-generate-modifiedmodel
+      {model_eval_overrides}
+    - echo "results_fairseq-generate-modifiedmodel:::"
+    - tail $$PT_OUTPUT_DIR/results_fairseq-generate-modifiedmodel/*
     submit_args:
       container_args:
         shm_size: 128G
@@ -78,17 +88,24 @@ search:
       values: ['$$PT_OUTPUT_DIR/logs']
     - name: encoder_experiment_layer_idx
       spec: discrete
-      values: ['0,1,2,3,4,5']
+      values: ['0,1,2,3,4,5', '0']
+      # values: ['0,1,2,3,4,5']
       # values: ['0', '0,1', '0,1,2', '0,1,2,3', '0,1,2,3,4', '0,1,2,3,4,5']
     - name: layer_type
       spec: discrete
-      values: ['crs --strategy first_k']
+      values: ['meProp_unified', 'shawn_unified', 'crs --strategy det_top_k', 'crs --strategy first_k', 'crs --strategy nps']
       # values: ['meProp_unified', 'shawn_unified', 'crs --strategy det_top_k', 'crs --strategy random', 'crs --strategy nps']
+      # values: ['crs --strategy first_k']
     - name: k
       spec: discrete
       values: ['64', '128', '256', '512']
-      # values: ['0']
       # values: ['64', ''128', '256', '512', '0']
+    - name: model_eval_overrides
+      spec: discrete
+      values: ['--model-overrides "{''k'': 0}"']
+      # values: ['--model-overrides "{''k'': 42, ''strategy'': ''nps'', ''encoder_experiment_layer_type''': ''meProp_unified''}"']
+      # double single-quotes to escape.
+      # values: ['']
 
 # --eval-bleu-args '{"beam": 5, "max_len_a": 1.2, "max_len_b": 10}' \
 
