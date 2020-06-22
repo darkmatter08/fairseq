@@ -1,4 +1,7 @@
-description: jains-fairseq-transformers-iwslt
+## NOTE:: We use --no-epoch-checkpoints and --save-dir $$PT_OUTPUT_DIR/checkpoints
+# to make sure intermediate ckpts are saved.
+
+description: jains-fairseq-transformers-iwslt--upper_bound_compute_baseline
 
 target:
   cluster: rr1
@@ -19,7 +22,7 @@ code:
 
 search:
   job_template:
-    name: jains-fairseq-transformers-iwslt__encoder_experiment_layer_idx_{encoder_experiment_layer_idx}__layer_type_{layer_type}__k_{k}
+    name: jains-fairseq-transformers-iwslt--upper_bound_compute_baseline--__encoder_experiment_layer_idx_{encoder_experiment_layer_idx}__layer_type_{layer_type}__k_{k}__encoder-ffn-embed-dim_{baseline_size}__encoder-embed-dim_{baseline_size}
     sku: G1
     sku_count: 1
     command:
@@ -59,16 +62,18 @@ search:
       --best-checkpoint-metric bleu --maximize-best-checkpoint-metric
       --tensorboard-logdir {tensorboard_dir}
       --max-epoch 120
+      --encoder-ffn-embed-dim {baseline_size}
+      --encoder-embed-dim {baseline_size}
       --no-epoch-checkpoints
       --save-dir $$PT_OUTPUT_DIR/checkpoints
-    - cp checkpoints/checkpoint_best.pt $$PT_OUTPUT_DIR
+    # - cp checkpoints/checkpoint_best.pt $$PT_OUTPUT_DIR
     - >-
       fairseq-generate data-bin/iwslt14.tokenized.de-en
       --path $$PT_OUTPUT_DIR/checkpoints/checkpoint_best.pt
       --batch-size 128 --beam 5 --remove-bpe
       --tensorboard-logdir {tensorboard_dir}
       --results-path $$PT_OUTPUT_DIR/results_fairseq-generate-origmodel
-    - echo "results_fairseq-generate:::"
+    - echo "results_fairseq-generate-origmodel:::"
     - tail $$PT_OUTPUT_DIR/results_fairseq-generate-origmodel/*
     - >-
       fairseq-generate data-bin/iwslt14.tokenized.de-en
@@ -79,6 +84,7 @@ search:
       {model_eval_overrides}
     - echo "results_fairseq-generate-modifiedmodel:::"
     - tail $$PT_OUTPUT_DIR/results_fairseq-generate-modifiedmodel/*
+    - bash
     submit_args:
       container_args:
         shm_size: 128G
@@ -90,39 +96,18 @@ search:
       values: ['$$PT_OUTPUT_DIR/logs']
     - name: encoder_experiment_layer_idx
       spec: discrete
-      values: ['0,1,2,3,4,5', '0']
-      # values: ['0,1,2,3,4,5']
-      # values: ['0', '0,1', '0,1,2', '0,1,2,3', '0,1,2,3,4', '0,1,2,3,4,5']
+      values: ['0,1,2,3,4,5']
     - name: layer_type
       spec: discrete
-      values: ['meProp_unified', 'shawn_unified', 'crs --strategy det_top_k', 'crs --strategy first_k', 'crs --strategy nps']
-      # values: ['meProp_unified', 'shawn_unified', 'crs --strategy det_top_k', 'crs --strategy random', 'crs --strategy nps']
-      # values: ['crs --strategy first_k']
+      values: ['crs --strategy det_top_k']
     - name: k
       spec: discrete
-      values: ['64', '128', '256', '512']
-      # values: ['64', ''128', '256', '512', '0']
+      values: ['0']
+    - name: baseline_size
+      spec: discrete
+      values: ['64', '256']
     - name: model_eval_overrides
       spec: discrete
       values: ['--model-overrides "{''k'': 0}"']
-      # values: ['--model-overrides "{''k'': 42, ''strategy'': ''nps'', ''encoder_experiment_layer_type''': ''meProp_unified''}"']
-      # double single-quotes to escape.
-      # values: ['']
 
 # --eval-bleu-args '{"beam": 5, "max_len_a": 1.2, "max_len_b": 10}' \
-
-
-# WORKS:
-# --arch transformer_iwslt_de_en_JAIN
-# --encoder_experiment_layer_idx 0,1,2
-# --encoder_experiment_layer_type {meProp_unified, meProp}
-# --strategy det_top_k
-# --k 99
-
-# --arch transformer_iwslt_de_en_JAIN
-# --encoder_experiment_layer_idx 0,1,2
-# --encoder_experiment_layer_type {crs}
-# --strategy {det_top_k, nps, random}
-# --k 99
-
-

@@ -50,9 +50,11 @@ search:
       --best-checkpoint-metric bleu --maximize-best-checkpoint-metric
       --tensorboard-logdir {tensorboard_dir}
       --max-epoch 120
+      --no-epoch-checkpoints
+      --save-dir $$PT_OUTPUT_DIR/checkpoints
     - >-
       fairseq-generate data-bin/iwslt14.tokenized.de-en
-      --path checkpoints/checkpoint_best.pt
+      --path $$PT_OUTPUT_DIR/checkpoints/checkpoint_best.pt
       --batch-size 128 --beam 5 --remove-bpe
       --tensorboard-logdir {tensorboard_dir}
       --results-path $$PT_OUTPUT_DIR/results_fairseq-generate

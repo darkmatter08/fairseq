@@ -1,0 +1,73 @@
+description: jains-fairseq-transformers-iwslt-eval-only
+
+target:
+  cluster: rr1
+  vc: resrchvc
+environment:
+  image: pytorch/pytorch:1.4-cuda10.1-cudnn7-devel
+
+storage:
+  shawn:
+    storage_account_name: hpalangivm0
+    container_name: shawn
+    local_dir: /data/home/jains/shawn
+  phillytoolsmnt:
+    storage_account_name: hpalangivm0
+    container_name: shawn
+    local_dir: /data/home/jains/phillytools
+
+code:
+  local_dir: /data/home/jains/Documents/fairseq
+
+search:
+  job_template:
+    name: jains-fairseq-transformers-iwslt-eval-only
+    sku: G1
+    sku_count: 1
+    command:
+    # - git clone https://github.com/pytorch/fairseq
+    # - cd fairseq
+    # - pip install --editable ./
+    - pip install --user ./
+    - pip install --user pyarrow
+    - pip install --user fastBPE sacremoses subword_nmt
+    - pip install --user tensorboardX
+    - pip freeze > img_pip_freeze.txt
+    - export TRAINBIN=$$(which fairseq-train)
+    - echo TRAINBIN
+    - echo $$TRAINBIN
+    # Hack to get fairseq-* CLI tools on PATH, may be caused by --user install?
+    - export PATH=$$PATH:/root/.local/bin:/home/jains/.local/bin
+    - export TRAINBIN=$$(which fairseq-train)
+    - echo TRAINBIN
+    - echo $$TRAINBIN
+    - >-
+      python -W ignore $$(which fairseq-generate) data-bin/iwslt14.tokenized.de-en
+      --path /mnt/phillytoolsmnt/projects/pt_transformers/6c37b10b/pt-results/{experiment_id}/checkpoints/checkpoint_best.pt
+      --batch-size 128 --beam 5 --remove-bpe
+      --tensorboard-logdir $$PT_OUTPUT_DIR/eval-logs-origmodel
+      --results-path $$PT_OUTPUT_DIR/results_fairseq-generate-origmodel
+    - echo "results_fairseq-generate:::"
+    - tail $$PT_OUTPUT_DIR/results_fairseq-generate-origmodel/*
+    - bash
+    - >-
+      python -W ignore $$(which fairseq-generate) data-bin/iwslt14.tokenized.de-en
+      --path /mnt/phillytoolsmnt/projects/pt_transformers/6c37b10b/pt-results/{experiment_id}/checkpoints/checkpoint_best.pt
+      --batch-size 128 --beam 5 --remove-bpe
+      --tensorboard-logdir $$PT_OUTPUT_DIR/eval-logs-origmodel
+      --results-path $$PT_OUTPUT_DIR/results_fairseq-generate-modifiedmodel
+      {model_eval_overrides}
+    - echo "results_fairseq-generate-modifiedmodel:::"
+    - tail $$PT_OUTPUT_DIR/results_fairseq-generate-modifiedmodel/*
+    submit_args:
+      container_args:
+        shm_size: 128G
+  type: grid
+  max_trials: 100
+  params:
+    - name: model_eval_overrides
+      spec: discrete
+      values: ['--model-overrides "{''k'': 0}"']
+    - name: experiment_id
+      spec: discrete
+      values: ['application_1583898264103_161861'] 

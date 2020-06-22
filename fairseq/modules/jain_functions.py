@@ -7,6 +7,7 @@ from torch.autograd import Function
 
 
 FULL_DW_EXPERIMENT = False
+print('FULL_DW_EXPERIMENT={}'.format(FULL_DW_EXPERIMENT))
 
 class linearUnified(Function):
     '''
