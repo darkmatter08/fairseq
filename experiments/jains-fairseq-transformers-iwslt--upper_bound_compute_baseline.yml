@@ -66,7 +66,6 @@ search:
       --encoder-embed-dim {baseline_size}
       --no-epoch-checkpoints
       --save-dir $$PT_OUTPUT_DIR/checkpoints
-    # - cp checkpoints/checkpoint_best.pt $$PT_OUTPUT_DIR
     - >-
       fairseq-generate data-bin/iwslt14.tokenized.de-en
       --path $$PT_OUTPUT_DIR/checkpoints/checkpoint_best.pt

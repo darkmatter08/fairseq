@@ -410,11 +410,9 @@ class CRS_TransformerEncoderLayer_NoQuant(TransformerEncoderLayer):
         super().__init__(args)
 
     def build_fc1(self, input_dim, output_dim, q_noise, qn_block_size):
-        print('using CRS_TransformerEncoderLayer_NoQuant.build_fc1')
         return LinearCRS(input_dim, output_dim, k=self.k, strategy=self.strategy)
 
     def build_fc2(self, input_dim, output_dim, q_noise, qn_block_size):
-        print('using CRS_TransformerEncoderLayer_NoQuant.build_fc2')
         return LinearCRS(input_dim, output_dim, k=self.k, strategy=self.strategy)
 
 
@@ -428,12 +426,10 @@ class meProp_TransformerEncoderLayer_NoQuant(TransformerEncoderLayer):
         super().__init__(args)
 
     def build_fc1(self, input_dim, output_dim, q_noise, qn_block_size):
-        print('using meProp_TransformerEncoderLayer_NoQuant.build_fc1')
         return Linear_meProp(input_dim, output_dim, self.k, unified=self.unified)
         # return LinearShawn(input_dim, output_dim, self.k, unified=True)
 
     def build_fc2(self, input_dim, output_dim, q_noise, qn_block_size):
-        print('using meProp_TransformerEncoderLayer_NoQuant.build_fc2')
         return Linear_meProp(input_dim, output_dim, self.k, unified=self.unified)
         # return LinearShawn(input_dim, output_dim, self.k, unified=True)
 
@@ -445,11 +441,9 @@ class TransformerEncoderLayer_NoQuant(TransformerEncoderLayer):
         super().__init__(args)
 
     def build_fc1(self, input_dim, output_dim, q_noise, qn_block_size):
-        print('using TransformerEncoderLayer_NoQuant.build_fc1')
         return nn.Linear(input_dim, output_dim)
 
     def build_fc2(self, input_dim, output_dim, q_noise, qn_block_size):
-        print('using TransformerEncoderLayer_NoQuant.build_fc2')
         return nn.Linear(input_dim, output_dim)
 
 

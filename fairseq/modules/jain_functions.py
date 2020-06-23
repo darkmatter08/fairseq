@@ -5,7 +5,7 @@ Both meProp and unified meProp are supported
 import torch
 from torch.autograd import Function
 
-
+# TODO make this a normal experiment accessible via argument in linearUnified
 FULL_DW_EXPERIMENT = False
 print('FULL_DW_EXPERIMENT={}'.format(FULL_DW_EXPERIMENT))
 
@@ -324,10 +324,13 @@ class linear_crs(Function):
         indexes, scaling = self.indexes_scaling
 
         if self.needs_input_grad[1]:  # w
-            partial_dw = dy.T @ x[:, indexes]
-            dw = torch.zeros_like(w)
-            dw[:, indexes] = partial_dw  # alternative to scatter_ or index_copy_
-            assert dw.shape == w.shape
+            if FULL_DW_EXPERIMENT:
+                dw = dy.T @ x
+            else:  # true crs style.
+                partial_dw = dy.T @ x[:, indexes]
+                dw = torch.zeros_like(w)
+                dw[:, indexes] = partial_dw  # alternative to scatter_ or index_copy_
+                assert dw.shape == w.shape
 
         if self.needs_input_grad[0]:  # x
             partial_dx = dy @ w[:, indexes]
@@ -374,9 +377,7 @@ def crs_mm(A, B, k, strategy='random'):
 
     if strategy == 'random':
         # Random Sampling (w/o replacement)
-        # indexes = np.random.choice(common_dimension, size=k, replace=False)
         indexes = torch.randperm(common_dimension)[:k]
-        # indexes, inds = torch.sort(indexes)  # only needed for the index_copy_ strategy.
         # Scale by 1 / (k*p_i)  # Eq. 1 in [1]
         scaling = 1 / (k * 1/common_dimension)
     elif strategy == 'det_top_k':
@@ -399,7 +400,6 @@ def crs_mm(A, B, k, strategy='random'):
         # Ref: https://stackoverflow.com/questions/6910641/how-do-i-get-indices-of-n-maximum-values-in-a-numpy-array
         # indexes = np.argpartition(norm_products, -k)[-k:]
         _, indexes = torch.topk(norm_products, k)
-        # indexes, inds = torch.sort(indexes)  # only needed for the index_copy_ strategy.
 
         # "In addition, we introduce a deterministic top-k sampling, which chooses the k column-row pairs
         # with the largest product of their euclidean norms without scaling." [1]
@@ -424,9 +424,7 @@ def crs_mm(A, B, k, strategy='random'):
         assert p_i.shape == (common_dimension,)
 
         # select k random samples w/o replacement, from the distribution p_i, from the set of col-row pairs.
-        # indexes = np.random.choice(common_dimension, size=k, replace=False, p=p_i)
         indexes = torch.multinomial(p_i, num_samples=k, replacement=False)
-        # indexes, inds = torch.sort(indexes)  # only needed for the index_copy_ strategy.
         assert indexes.shape == (k,)
 
         # "when one matrix or both have i.i.d. entries with zero mean, random individual column-row
@@ -443,6 +441,11 @@ def crs_mm(A, B, k, strategy='random'):
         indexes = torch.arange(k)
         # Scale by 1 / (k*p_i)  # Eq. 1 in [1]
         scaling = 1 / (k * 1/common_dimension)
+    elif strategy == 'single_norm':
+        col_norms_A = torch.norm(A, dim=0)
+        _, indexes = torch.topk(col_norms_A, k)
+        scaling = None
+    # TODO add strategy == 'approx_top_k':
     else:
         raise NotImplementedError
 
@@ -461,6 +464,7 @@ def crs_mm(A, B, k, strategy='random'):
             D = cols_A @ rows_B * scaling
     else:
         # Simply take outer product of cols_A and rows_B
+        # TODO: replace with torch.mm()
         D = cols_A @ rows_B
 
     return D, indexes, scaling
