@@ -1,0 +1,86 @@
+description: transforers-generate-frontier
+
+target:
+  cluster: rr1
+  vc: resrchvc
+  # cluster: eu1
+  # vc: msrlabs
+environment:
+  image: pytorch/pytorch:1.4-cuda10.1-cudnn7-devel
+
+storage:
+  shawn:
+    storage_account_name: hpalangivm0
+    container_name: shawn
+    local_dir: /data/home/jains/shawn
+
+code:
+  local_dir: /data/home/jains/Documents/fairseq
+
+search:
+  job_template:
+    name: transformers-iwslt__width_{model_width}
+    sku: G1
+    sku_count: 1
+    command:
+    # - git clone https://github.com/pytorch/fairseq
+    # - cd fairseq
+    # - pip install --editable ./
+    - pip install --user ./
+    - pip install --user pyarrow
+    - pip install --user fastBPE sacremoses subword_nmt
+    - pip install --user tensorboardX
+    - pip freeze > img_pip_freeze.txt
+    # Hack to get fairseq-* CLI tools on PATH, may be caused by --user install?
+    - export PATH=$$PATH:/root/.local/bin:/home/jains/.local/bin
+    - >-
+      python -W ignore $$(which fairseq-train)
+      data-bin/iwslt14.tokenized.de-en
+      --arch transformer_iwslt_de_en
+      --share-decoder-input-output-embed
+      --optimizer adam --adam-betas '(0.9, 0.98)' --clip-norm 0.0
+      --lr 5e-4 --lr-scheduler inverse_sqrt --warmup-updates 4000
+      --dropout 0.3 --weight-decay 0.0001
+      --criterion label_smoothed_cross_entropy --label-smoothing 0.1
+      --eval-bleu
+      --eval-bleu-detok moses
+      --eval-bleu-remove-bpe
+      --eval-bleu-print-samples
+      --best-checkpoint-metric bleu --maximize-best-checkpoint-metric
+      --tensorboard-logdir {tensorboard_dir}
+      --max-epoch 120
+      --no-epoch-checkpoints
+      --save-dir $$PT_OUTPUT_DIR/checkpoints
+      --max-tokens 4096
+      {model_width}
+    - >-
+      fairseq-generate data-bin/iwslt14.tokenized.de-en
+      --path $$PT_OUTPUT_DIR/checkpoints/checkpoint_best.pt
+      --batch-size 128 --beam 5 --remove-bpe
+      --tensorboard-logdir {tensorboard_dir}
+      --results-path $$PT_OUTPUT_DIR/results_fairseq-generate
+    - echo "results_fairseq-generate:::"
+    - tail $$PT_OUTPUT_DIR/results_fairseq-generate/*
+    submit_args:
+      container_args:
+        shm_size: 128G
+  type: grid
+  max_trials: 20
+  params:
+    - name: tensorboard_dir
+      spec: discrete
+      values: ['$$PT_OUTPUT_DIR/logs']
+    - name: model_width
+      spec: discrete
+      values: [
+        '--encoder-ffn-embed-dim 64 --encoder-embed-dim 32 --decoder-ffn-embed-dim 64 --decoder-embed-dim 32',
+        '--encoder-ffn-embed-dim 128 --encoder-embed-dim 64 --decoder-ffn-embed-dim 128 --decoder-embed-dim 64',
+        '--encoder-ffn-embed-dim 256 --encoder-embed-dim 128 --decoder-ffn-embed-dim 256 --decoder-embed-dim 128',
+        '--encoder-ffn-embed-dim 512 --encoder-embed-dim 256 --decoder-ffn-embed-dim 512 --decoder-embed-dim 256',
+        '--encoder-ffn-embed-dim 1024 --encoder-embed-dim 512 --decoder-ffn-embed-dim 1024 --decoder-embed-dim 512',
+        '--encoder-ffn-embed-dim 2048 --encoder-embed-dim 1024 --decoder-ffn-embed-dim 2048 --decoder-embed-dim 1024',
+        '--encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048',
+        '--encoder-ffn-embed-dim 8192 --encoder-embed-dim 4096 --decoder-ffn-embed-dim 8192 --decoder-embed-dim 4096',
+      ]
+
+# --max-tokens 32768 as opposed to 4096!
