@@ -377,7 +377,7 @@ def crs_mm(A, B, k, strategy='random'):
 
     if strategy == 'random':
         # Random Sampling (w/o replacement)
-        indexes = torch.randperm(common_dimension)[:k]
+        indexes = torch.randperm(common_dimension, device=A.device)[:k]
         # Scale by 1 / (k*p_i)  # Eq. 1 in [1]
         scaling = 1 / (k * 1/common_dimension)
     elif strategy == 'det_top_k':
@@ -399,7 +399,7 @@ def crs_mm(A, B, k, strategy='random'):
         # Take the last k of these values to get the indexes of the largest values.
         # Ref: https://stackoverflow.com/questions/6910641/how-do-i-get-indices-of-n-maximum-values-in-a-numpy-array
         # indexes = np.argpartition(norm_products, -k)[-k:]
-        _, indexes = torch.topk(norm_products, k)
+        _, indexes = torch.topk(norm_products, k) # same device as norm_products
 
         # "In addition, we introduce a deterministic top-k sampling, which chooses the k column-row pairs
         # with the largest product of their euclidean norms without scaling." [1]
@@ -410,9 +410,9 @@ def crs_mm(A, B, k, strategy='random'):
         # p_i = |A[:, i]| * |B[i, :]| / summation_j [|A[:, j]| * |B[j, :]|]
 
         # Compute norms of all cols of A
-        col_norms_A = torch.norm(A, dim=0)  # TODO VERIFY: dim=0 for cols.
+        col_norms_A = torch.norm(A, dim=0)  # same device as A
         # Compute norms of all rows of B
-        row_norms_B = torch.norm(B, dim=1)  # TODO VERIFY: dim=1 for rows.
+        row_norms_B = torch.norm(B, dim=1)
         assert col_norms_A.shape == row_norms_B.shape
 
         # Compute norm-products of all corresponding col-row pairs (not all pairs!)
@@ -424,7 +424,7 @@ def crs_mm(A, B, k, strategy='random'):
         assert p_i.shape == (common_dimension,)
 
         # select k random samples w/o replacement, from the distribution p_i, from the set of col-row pairs.
-        indexes = torch.multinomial(p_i, num_samples=k, replacement=False)
+        indexes = torch.multinomial(p_i, num_samples=k, replacement=False)  # same device as p_i.
         assert indexes.shape == (k,)
 
         # "when one matrix or both have i.i.d. entries with zero mean, random individual column-row
@@ -435,10 +435,10 @@ def crs_mm(A, B, k, strategy='random'):
         # TODO implement scaling, just for comparison...
         if 0:  # scaling seems to improve error metric...
             scaling = 1 / (k * p_i)
-            scaling = torch.diag(scaling[indexes])
+            scaling = torch.diag(scaling[indexes], device=A.device)
     elif strategy == 'first_k':
         # This strategy is for testing only -- a best-case runtime if we optimized away topk, norm, etc...
-        indexes = torch.arange(k)
+        indexes = torch.arange(k, device=A.device)
         # Scale by 1 / (k*p_i)  # Eq. 1 in [1]
         scaling = 1 / (k * 1/common_dimension)
     elif strategy == 'single_norm':
@@ -464,8 +464,8 @@ def crs_mm(A, B, k, strategy='random'):
             D = cols_A @ rows_B * scaling
     else:
         # Simply take outer product of cols_A and rows_B
-        # TODO: replace with torch.mm()
-        D = cols_A @ rows_B
+        # D = cols_A @ rows_B
+        D = torch.mm(cols_A, rows_B)
 
     return D, indexes, scaling
 
