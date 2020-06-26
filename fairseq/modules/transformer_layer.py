@@ -60,6 +60,8 @@ class TransformerEncoderLayer(nn.Module):
 
         self.self_attn_times = []
         self.fc_times = []
+        self.res_norm_after_self_attn_times = []
+        self.res_norm_after_fc_times = []
 
     # TODO(jains): change these defns for approximate matmul methods.
     def build_fc1(self, input_dim, output_dim, q_noise, qn_block_size):
@@ -116,8 +118,10 @@ class TransformerEncoderLayer(nn.Module):
 
         residual = x
         if self.normalize_before:
+            # Note: doesn't run in the typical baseline case
             x = self.self_attn_layer_norm(x)
         if attn_mask is not None:
+            # Note: doesn't run in the typical baseline case
             attn_mask = attn_mask.masked_fill(attn_mask.to(torch.bool), -1e8)
         # anything in original attn_mask = 1, becomes -1e8
         # anything in original attn_mask = 0, becomes 0
@@ -154,6 +158,7 @@ class TransformerEncoderLayer(nn.Module):
         print('self_attn_time_sum(ms)=', self_attn_time_sum)
         print('self_attn_time_std(ms)=', self_attn_time_std)
 
+        start.record()
         x = F.dropout(x, p=self.dropout, training=self.training)
         x = residual + x
         if not self.normalize_before:
@@ -162,13 +167,27 @@ class TransformerEncoderLayer(nn.Module):
         residual = x
         if self.normalize_before:
             x = self.final_layer_norm(x)
+        end.record()
+        end.synchronize()
+        res_norm_after_self_attn_time = start.elapsed_time(end)
+        self.res_norm_after_self_attn_times.append(res_norm_after_self_attn_time)
+        res_norm_after_self_attn_mean = torch.mean(torch.tensor(self.res_norm_after_self_attn_times))
+        res_norm_after_self_attn_sum = torch.sum(torch.tensor(self.res_norm_after_self_attn_times))
+        res_norm_after_self_attn_std = torch.std(torch.tensor(self.res_norm_after_self_attn_times))
+        metrics.log_scalar(key='mean_res_norm_after_self_attn', value=res_norm_after_self_attn_mean.item())
+        metrics.log_scalar(key='sum_res_norm_after_self_attn', value=res_norm_after_self_attn_sum.item())
+        metrics.log_scalar(key='std_res_norm_after_self_attn', value=res_norm_after_self_attn_std.item())
+        metrics.log_scalar(key='len_res_norm_after_self_attn', value=len(self.res_norm_after_self_attn_times))
+        print('res_norm_after_self_attn_time(ms)=', res_norm_after_self_attn_time)
+        print('res_norm_after_self_attn_time_mean(ms)=', torch.mean(torch.tensor(self.res_norm_after_self_attn_times)))
+        print('res_norm_after_self_attn_time_sum(ms)=', torch.sum(torch.tensor(self.res_norm_after_self_attn_times)))
+        print('res_norm_after_self_attn_time_std(ms)=', torch.std(torch.tensor(self.res_norm_after_self_attn_times)))
 
         start.record()
         x = self.activation_fn(self.fc1(x))
         x = F.dropout(x, p=float(self.activation_dropout), training=self.training)
         x = self.fc2(x)
         x = F.dropout(x, p=self.dropout, training=self.training)
-
         end.record()
         end.synchronize()
         fc_time = start.elapsed_time(end)
@@ -186,9 +205,27 @@ class TransformerEncoderLayer(nn.Module):
         print('fc_time_sum(ms)=', torch.sum(torch.tensor(self.fc_times)))
         print('fc_time_std(ms)=', torch.std(torch.tensor(self.fc_times)))
 
+        start.record()
         x = residual + x
         if not self.normalize_before:
             x = self.final_layer_norm(x)
+        end.record()
+        end.synchronize()
+        res_norm_after_fc_time = start.elapsed_time(end)
+        self.res_norm_after_fc_times.append(res_norm_after_fc_time)
+        metrics.log_scalar(key='fc_time', value=res_norm_after_fc_time)
+        res_norm_after_fc_time_mean = torch.mean(torch.tensor(self.res_norm_after_fc_times))
+        res_norm_after_fc_time_sum = torch.sum(torch.tensor(self.res_norm_after_fc_times))
+        res_norm_after_fc_time_std = torch.std(torch.tensor(self.res_norm_after_fc_times))
+        metrics.log_scalar(key='mean_res_norm_after_fc_time', value=res_norm_after_fc_time_mean.item())
+        metrics.log_scalar(key='sum_res_norm_after_fc_time', value=res_norm_after_fc_time_sum.item())
+        metrics.log_scalar(key='std_res_norm_after_fc_time', value=res_norm_after_fc_time_std.item())
+        metrics.log_scalar(key='len_res_norm_after_fc_time', value=len(self.res_norm_after_fc_times))
+        print('res_norm_after_fc_times(ms)=', res_norm_after_fc_time)
+        print('res_norm_after_fc_times_mean(ms)=', torch.mean(torch.tensor(self.res_norm_after_fc_times)))
+        print('res_norm_after_fc_times_sum(ms)=', torch.sum(torch.tensor(self.res_norm_after_fc_times)))
+        print('res_norm_after_fc_times_std(ms)=', torch.std(torch.tensor(self.res_norm_after_fc_times)))
+
         return x
 
 
