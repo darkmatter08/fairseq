@@ -253,8 +253,8 @@ class FairseqEncoderDecoderModel(BaseFairseqModel):
 
         self.encoder = encoder
         self.decoder = decoder
-        assert isinstance(self.encoder, FairseqEncoder)
-        assert isinstance(self.decoder, FairseqDecoder)
+        # assert isinstance(self.encoder, FairseqEncoder)
+        # assert isinstance(self.decoder, FairseqDecoder)
 
     def forward(self, src_tokens, src_lengths, prev_output_tokens, **kwargs):
         """

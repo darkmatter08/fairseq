@@ -34,7 +34,7 @@ search:
     # Hack to get fairseq-* CLI tools on PATH, may be caused by --user install?
     - export PATH=$$PATH:/root/.local/bin:/home/jains/.local/bin
     - >-
-      python -W ignore $$(which fairseq-train)
+      python -W ignore -m pdb $$(which fairseq-train)
       data-bin/iwslt14.tokenized.de-en
       --arch transformer_iwslt_de_en
       --share-decoder-input-output-embed
@@ -52,6 +52,7 @@ search:
       --max-epoch 120
       --no-epoch-checkpoints
       --save-dir $$PT_OUTPUT_DIR/checkpoints
+    - bash
     - >-
       fairseq-generate data-bin/iwslt14.tokenized.de-en
       --path $$PT_OUTPUT_DIR/checkpoints/checkpoint_best.pt

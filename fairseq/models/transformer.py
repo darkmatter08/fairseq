@@ -237,7 +237,8 @@ class TransformerModel(FairseqEncoderDecoderModel):
 
         encoder = cls.build_encoder(args, src_dict, encoder_embed_tokens)
         decoder = cls.build_decoder(args, tgt_dict, decoder_embed_tokens)
-        return cls(args, encoder, decoder)
+        import pdb; pdb.set_trace()
+        return torch.jit.script(cls(args, encoder, decoder))
 
     @classmethod
     def build_embedding(cls, args, dictionary, embed_dim, path=None):
@@ -253,16 +254,16 @@ class TransformerModel(FairseqEncoderDecoderModel):
 
     @classmethod
     def build_encoder(cls, args, src_dict, embed_tokens):
-        return TransformerEncoder(args, src_dict, embed_tokens)
+        return torch.jit.script(TransformerEncoder(args, src_dict, embed_tokens))
 
     @classmethod
     def build_decoder(cls, args, tgt_dict, embed_tokens):
-        return TransformerDecoder(
+        return torch.jit.script(TransformerDecoder(
             args,
             tgt_dict,
             embed_tokens,
             no_encoder_attn=getattr(args, "no_cross_attention", False),
-        )
+        ))
 
     # TorchScript doesn't support optional arguments with variable length (**kwargs).
     # Current workaround is to add union of all arguments in child classes.
