@@ -362,9 +362,8 @@ class TransformerEncoder(FairseqEncoder):
             self.layers = LayerDropModuleList(p=self.encoder_layerdrop)
         else:
             self.layers = nn.ModuleList([])
-        # TODO(jains) swap to different build_encoder_layer() calls depending on exact layers.
+        # Swap to different build_encoder_layer() calls depending on exact layers.
         # --encoder_experiment_layer_idx, --encoder_experiment_layer_type, --strategy, --k
-        print(args)
         if args.encoder_experiment_layer_idx is None:
             # VERIFIED: this code path triggers with `--arch transformer_iwslt_de_en`
             self.layers.extend([
@@ -372,7 +371,7 @@ class TransformerEncoder(FairseqEncoder):
                 for i in range(args.encoder_layers)
             ])
         else:
-            # TODO verify this code path triggers ONLY with `--arch transformer_iwslt_de_en_JAIN`
+            # VERIFIED: this code path triggers ONLY with `--arch transformer_iwslt_de_en_JAIN`
             experiment_layers = list(map(int, args.encoder_experiment_layer_idx.split(',')))
             for i in range(args.encoder_layers):
                 if i in experiment_layers or experiment_layers==[-1]:

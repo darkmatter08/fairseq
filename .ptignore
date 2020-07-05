@@ -1,3 +1,4 @@
 examples/
 # just testing this out to see if it works...
-
+fairseq/modules/compare_linears/
+fairseq.gif
