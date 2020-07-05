@@ -1,0 +1,94 @@
+description: jains-fairseq-transformers-iwslt-wide-baselines
+
+target:
+  cluster: rr1
+  vc: resrchvc
+  # cluster: eu1
+  # vc: msrlabs
+environment:
+  image: pytorch/pytorch:1.4-cuda10.1-cudnn7-devel
+
+storage:
+  shawn:
+    storage_account_name: hpalangivm0
+    container_name: shawn
+    local_dir: /data/home/jains/shawn
+
+code:
+  local_dir: /data/home/jains/Documents/fairseq
+
+search:
+  job_template:
+    name: jains-fairseq-transformers-iwslt-wide-baselines__width_{model_width}
+    sku: G1
+    sku_count: 1
+    command:
+    # - git clone https://github.com/pytorch/fairseq
+    # - cd fairseq
+    # - pip install --editable ./
+    - pip install --user ./
+    - pip install --user pyarrow
+    - pip install --user fastBPE sacremoses subword_nmt
+    - pip install --user sacrebleu==1.4.10
+    - pip install --user tensorboardX
+    - pip freeze > img_pip_freeze.txt
+    # Hack to get fairseq-* CLI tools on PATH, may be caused by --user install?
+    - export PATH=$$PATH:/root/.local/bin:/home/jains/.local/bin
+    - >-
+      python -W ignore $$(which fairseq-train)
+      data-bin/iwslt14.tokenized.de-en
+      --arch transformer_alpha_iwslt_de_en
+      --share-decoder-input-output-embed
+      --optimizer adam --adam-betas '(0.9, 0.98)' --clip-norm 0.0
+      --lr 5e-4 --lr-scheduler inverse_sqrt --warmup-updates 4000
+      --dropout 0.3 --weight-decay 0.0001
+      --criterion label_smoothed_cross_entropy --label-smoothing 0.1
+      --eval-bleu
+      --eval-bleu-detok moses
+      --eval-bleu-remove-bpe
+      --eval-bleu-print-samples
+      --best-checkpoint-metric bleu --maximize-best-checkpoint-metric
+      --tensorboard-logdir {tensorboard_dir}
+      --max-epoch 120
+      --no-epoch-checkpoints
+      --save-dir $$PT_OUTPUT_DIR/checkpoints
+      --max-tokens 8192
+      {model_width}
+      --user-dir alpha_lang/code/alpha_lang
+      --last-layer-alpha 1
+      --attn-alpha 4
+    - >-
+      fairseq-generate data-bin/iwslt14.tokenized.de-en
+      --path $$PT_OUTPUT_DIR/checkpoints/checkpoint_best.pt
+      --batch-size 128 --beam 5 --remove-bpe
+      --tensorboard-logdir {tensorboard_dir}
+      --results-path $$PT_OUTPUT_DIR/results_fairseq-generate
+    - echo "results_fairseq-generate:::"
+    - tail $$PT_OUTPUT_DIR/results_fairseq-generate/*
+    - bash
+    submit_args:
+      container_args:
+        shm_size: 128G
+  type: grid
+  max_trials: 20
+  params:
+    - name: tensorboard_dir
+      spec: discrete
+      values: ['$$PT_OUTPUT_DIR/logs']
+    - name: model_width
+      spec: discrete
+      values: ['', '--encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048 --encoder-layers 2 --decoder-layers 2', '--encoder-ffn-embed-dim 2048 --encoder-embed-dim 1024 --decoder-ffn-embed-dim 2048 --decoder-embed-dim 1024 --encoder-layers 2 --decoder-layers 2']
+      # values: ['--encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048 --encoder-layers 4 --decoder-layers 4']
+
+
+
+# local results (1GPU):::
+
+# width=2048, layers=2, max-tokens=8192 works. params=199589888
+# width=2048, layers=2, max-tokens=16384 works. params=199589888
+# width=2048, layers=2, max-tokens=32768 CUDA OOM. params=199589888
+# width=2048, layers=4, max-tokens=16384 CUDA OOM. params=367476736
+# width=2048, layers=4, max-tokens=8192. works. params=367476736
+
+# 4096, layers=2, 4096, layers=1:: max-tokens 4096 trains
+# 4096, layers=2, 4096, layers=1:: max-tokens 32k CUDA OOM locally.
