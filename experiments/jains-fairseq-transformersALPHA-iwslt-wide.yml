@@ -1,4 +1,4 @@
-description: jains-fairseq-transformers-iwslt-wide-baselines
+description: jains-fairseq-transformersALPHA-iwslt-wide-baselines-scaledLR
 
 target:
   cluster: rr1
@@ -19,13 +19,14 @@ code:
 
 search:
   job_template:
-    name: jains-fairseq-transformers-iwslt-wide-baselines__width_{model_width}
+    name: wide-baselines__width_{model_width}_{n_layers}__runnumber_{run_number}
     sku: G1
     sku_count: 1
     command:
     # - git clone https://github.com/pytorch/fairseq
     # - cd fairseq
     # - pip install --editable ./
+    - pip install ipdb
     - pip install --user ./
     - pip install --user pyarrow
     - pip install --user fastBPE sacremoses subword_nmt
@@ -40,14 +41,13 @@ search:
       --arch transformer_alpha_iwslt_de_en
       --share-decoder-input-output-embed
       --optimizer adam --adam-betas '(0.9, 0.98)' --clip-norm 0.0
-      --lr 5e-4 --lr-scheduler inverse_sqrt --warmup-updates 4000
+      --lr-scheduler inverse_sqrt --warmup-updates 4000
       --dropout 0.3 --weight-decay 0.0001
       --criterion label_smoothed_cross_entropy --label-smoothing 0.1
       --eval-bleu
       --eval-bleu-detok moses
       --eval-bleu-remove-bpe
       --eval-bleu-print-samples
-      --best-checkpoint-metric bleu --maximize-best-checkpoint-metric
       --tensorboard-logdir {tensorboard_dir}
       --max-epoch 120
       --no-epoch-checkpoints
@@ -57,15 +57,16 @@ search:
       --user-dir alpha_lang/code/alpha_lang
       --last-layer-alpha 1
       --attn-alpha 4
+    - echo RUN_NUMBER {run_number}
     - >-
       fairseq-generate data-bin/iwslt14.tokenized.de-en
       --path $$PT_OUTPUT_DIR/checkpoints/checkpoint_best.pt
       --batch-size 128 --beam 5 --remove-bpe
       --tensorboard-logdir {tensorboard_dir}
       --results-path $$PT_OUTPUT_DIR/results_fairseq-generate
+      --user-dir alpha_lang/code/alpha_lang
     - echo "results_fairseq-generate:::"
     - tail $$PT_OUTPUT_DIR/results_fairseq-generate/*
-    - bash
     submit_args:
       container_args:
         shm_size: 128G
@@ -77,18 +78,31 @@ search:
       values: ['$$PT_OUTPUT_DIR/logs']
     - name: model_width
       spec: discrete
-      values: ['', '--encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048 --encoder-layers 2 --decoder-layers 2', '--encoder-ffn-embed-dim 2048 --encoder-embed-dim 1024 --decoder-ffn-embed-dim 2048 --decoder-embed-dim 1024 --encoder-layers 2 --decoder-layers 2']
-      # values: ['--encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048 --encoder-layers 4 --decoder-layers 4']
+      values: [
+        '--lr 5e-4 --encoder-layers 20 --decoder-layers 20',  # deep base width
+        '--lr 0.00025 --encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048 --encoder-layers 1 --decoder-layers 1',  # wide. Compare to deep.
+        '--lr 5e-4',  # n_layers=6, base width, base layers
+        '--lr 0.00025 --encoder-ffn-embed-dim 2048 --encoder-embed-dim 1024 --decoder-ffn-embed-dim 2048 --decoder-embed-dim 1024 --encoder-layers 1 --decoder-layers 1',  # med width comparison to base width, base layers
+      ]  # fair comparisons.
+    # - name: n_layers
+    #   spec: discrete
+    #   values: [
+    #     '--encoder-layers 2 --decoder-layers 2',
+    #     '--encoder-layers 4 --decoder-layers 4',
+    #   ]
+    # - name: model_width
+    #   spec: discrete
+    #   values: [
+    #     '--lr 5e-4',
+    #     '--lr 0.00035355339059327376 --encoder-ffn-embed-dim 2048 --encoder-embed-dim 1024 --decoder-ffn-embed-dim 2048 --decoder-embed-dim 1024',
+    #     '--lr 0.00025 --encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048',
+    #   ]
+    - name: run_number
+      spec: discrete
+      values: [
+        '0',
+      ]
 
 
-
-# local results (1GPU):::
-
-# width=2048, layers=2, max-tokens=8192 works. params=199589888
-# width=2048, layers=2, max-tokens=16384 works. params=199589888
-# width=2048, layers=2, max-tokens=32768 CUDA OOM. params=199589888
-# width=2048, layers=4, max-tokens=16384 CUDA OOM. params=367476736
-# width=2048, layers=4, max-tokens=8192. works. params=367476736
-
-# 4096, layers=2, 4096, layers=1:: max-tokens 4096 trains
-# 4096, layers=2, 4096, layers=1:: max-tokens 32k CUDA OOM locally.
+# Add this back into the train args to report and save checkpoints based on best_bleu instead of best_loss
+# --best-checkpoint-metric bleu --maximize-best-checkpoint-metric

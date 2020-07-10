@@ -43,19 +43,21 @@ search:
     - echo $$TRAINBIN
     - >-
       python -W ignore $$(which fairseq-generate) data-bin/iwslt14.tokenized.de-en
-      --path /mnt/phillytoolsmnt/projects/pt_transformers/6c37b10b/pt-results/{experiment_id}/checkpoints/checkpoint_best.pt
+      --path /mnt/phillytoolsmnt/projects/pt_transformers/92c24d7a/pt-results/{experiment_id}/checkpoints/checkpoint_best.pt
       --batch-size 128 --beam 5 --remove-bpe
       --tensorboard-logdir $$PT_OUTPUT_DIR/eval-logs-origmodel
       --results-path $$PT_OUTPUT_DIR/results_fairseq-generate-origmodel
+      --user-dir alpha_lang/code/alpha_lang
     - echo "results_fairseq-generate:::"
     - tail $$PT_OUTPUT_DIR/results_fairseq-generate-origmodel/*
     - bash
     - >-
       python -W ignore $$(which fairseq-generate) data-bin/iwslt14.tokenized.de-en
-      --path /mnt/phillytoolsmnt/projects/pt_transformers/6c37b10b/pt-results/{experiment_id}/checkpoints/checkpoint_best.pt
+      --path /mnt/phillytoolsmnt/projects/pt_transformers/92c24d7a/pt-results/{experiment_id}/checkpoints/checkpoint_best.pt
       --batch-size 128 --beam 5 --remove-bpe
       --tensorboard-logdir $$PT_OUTPUT_DIR/eval-logs-origmodel
       --results-path $$PT_OUTPUT_DIR/results_fairseq-generate-modifiedmodel
+      --user-dir alpha_lang/code/alpha_lang
       {model_eval_overrides}
     - echo "results_fairseq-generate-modifiedmodel:::"
     - tail $$PT_OUTPUT_DIR/results_fairseq-generate-modifiedmodel/*
@@ -70,4 +72,4 @@ search:
       values: ['--model-overrides "{''k'': 0}"']
     - name: experiment_id
       spec: discrete
-      values: ['application_1583898264103_161861'] 
+      values: ['application_1583898264103_207467'] 

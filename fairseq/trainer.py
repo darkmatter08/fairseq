@@ -95,7 +95,7 @@ class Trainer(object):
         if self.quantizer is not None:
             self.quantizer.set_trainer(self)
 
-        metrics.log_start_time("wall", priority=790, round=0)
+        metrics.log_start_time("wall", priority=790, round=3)
 
     def reinitialize(self):
         """Reinitialize the Trainer, typically after model params change."""
@@ -367,7 +367,7 @@ class Trainer(object):
         self.criterion.train()
         self.zero_grad()
 
-        metrics.log_start_time("train_wall", priority=800, round=0)
+        metrics.log_start_time("train_wall", priority=800, round=3)
 
         # forward and backward pass
         logging_outputs, sample_size, ooms = [], 0, 0
