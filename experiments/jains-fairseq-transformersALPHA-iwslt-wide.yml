@@ -19,7 +19,8 @@ code:
 
 search:
   job_template:
-    name: wide-baselines__width_{model_width}_{n_layers}__runnumber_{run_number}
+    # name: wide-baselines__width_{model_width}_{n_layers}__runnumber_{run_number}
+    name: wide-baselines__width_{model_width}__runnumber_{run_number}
     sku: G1
     sku_count: 1
     command:
@@ -35,6 +36,7 @@ search:
     - pip freeze > img_pip_freeze.txt
     # Hack to get fairseq-* CLI tools on PATH, may be caused by --user install?
     - export PATH=$$PATH:/root/.local/bin:/home/jains/.local/bin
+    - echo RUN_NUMBER {run_number}
     - >-
       python -W ignore $$(which fairseq-train)
       data-bin/iwslt14.tokenized.de-en
@@ -52,12 +54,12 @@ search:
       --max-epoch 120
       --no-epoch-checkpoints
       --save-dir $$PT_OUTPUT_DIR/checkpoints
-      --max-tokens 8192
+      --max-tokens {max_tokens}
       {model_width}
       --user-dir alpha_lang/code/alpha_lang
       --last-layer-alpha 1
       --attn-alpha 4
-    - echo RUN_NUMBER {run_number}
+      --fp16
     - >-
       fairseq-generate data-bin/iwslt14.tokenized.de-en
       --path $$PT_OUTPUT_DIR/checkpoints/checkpoint_best.pt
@@ -80,9 +82,9 @@ search:
       spec: discrete
       values: [
         '--lr 5e-4 --encoder-layers 20 --decoder-layers 20',  # deep base width
-        '--lr 0.00025 --encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048 --encoder-layers 1 --decoder-layers 1',  # wide. Compare to deep.
-        '--lr 5e-4',  # n_layers=6, base width, base layers
-        '--lr 0.00025 --encoder-ffn-embed-dim 2048 --encoder-embed-dim 1024 --decoder-ffn-embed-dim 2048 --decoder-embed-dim 1024 --encoder-layers 1 --decoder-layers 1',  # med width comparison to base width, base layers
+        # '--lr 0.00025 --encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048 --encoder-layers 1 --decoder-layers 1',  # wide. Compare to deep.
+        # '--lr 5e-4',  # n_layers=6, base width, base layers
+        # '--lr 0.00035355339059327376 --encoder-ffn-embed-dim 2048 --encoder-embed-dim 1024 --decoder-ffn-embed-dim 2048 --decoder-embed-dim 1024 --encoder-layers 1 --decoder-layers 1',  # med width comparison to base width, base layers
       ]  # fair comparisons.
     # - name: n_layers
     #   spec: discrete
@@ -101,8 +103,16 @@ search:
       spec: discrete
       values: [
         '0',
+        '1',
       ]
-
+    - name: max_tokens
+      spec: discrete
+      values: [
+        '8192',  # WIDE, OOM at epoch 1, 76%, inital alloc 15.3GB of 16.3GB
+        # '4096',  # WIDE, inital alloc 9GB
+        # '2048',
+        # '1024',
+      ]
 
 # Add this back into the train args to report and save checkpoints based on best_bleu instead of best_loss
 # --best-checkpoint-metric bleu --maximize-best-checkpoint-metric

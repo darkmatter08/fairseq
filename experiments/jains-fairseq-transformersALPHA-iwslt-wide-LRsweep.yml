@@ -1,0 +1,145 @@
+description: jains-fairseq-transformersALPHA-iwslt-wide-baselines-LRsweep
+
+target:
+  cluster: rr1
+  vc: resrchvc
+  # cluster: eu1
+  # vc: msrlabs
+environment:
+  image: pytorch/pytorch:1.4-cuda10.1-cudnn7-devel
+
+storage:
+  shawn:
+    storage_account_name: hpalangivm0
+    container_name: shawn
+    local_dir: /data/home/jains/shawn
+
+code:
+  local_dir: /data/home/jains/Documents/fairseq
+
+search:
+  job_template:
+    name: wide-baselines__width_{model_width}__runnumber_{run_number}
+    sku: G1
+    sku_count: 1
+    command:
+    # - git clone https://github.com/pytorch/fairseq
+    # - cd fairseq
+    # - pip install --editable ./
+    - pip install --user ./
+    - pip install --user pyarrow
+    - pip install --user fastBPE sacremoses subword_nmt
+    - pip install --user sacrebleu==1.4.10
+    - pip install --user tensorboardX
+    - pip freeze > img_pip_freeze.txt
+    # Hack to get fairseq-* CLI tools on PATH, may be caused by --user install?
+    - export PATH=$$PATH:/root/.local/bin:/home/jains/.local/bin
+    - echo RUN_NUMBER {run_number}
+    - >-
+      python -W ignore $$(which fairseq-train)
+      data-bin/iwslt14.tokenized.de-en
+      --arch transformer_alpha_iwslt_de_en
+      --share-decoder-input-output-embed
+      --optimizer adam --adam-betas '(0.9, 0.98)' --clip-norm 0.0
+      --lr-scheduler inverse_sqrt --warmup-updates 4000
+      --dropout 0.3 --weight-decay 0.0001
+      --criterion label_smoothed_cross_entropy --label-smoothing 0.1
+      --eval-bleu
+      --eval-bleu-detok moses
+      --eval-bleu-remove-bpe
+      --eval-bleu-print-samples
+      --tensorboard-logdir {tensorboard_dir}
+      --max-epoch 120
+      --no-epoch-checkpoints
+      --save-dir $$PT_OUTPUT_DIR/checkpoints
+      --max-tokens 8192
+      {model_width}
+      --user-dir alpha_lang/code/alpha_lang
+      --last-layer-alpha 1
+      --attn-alpha 4
+    - >-
+      fairseq-generate data-bin/iwslt14.tokenized.de-en
+      --path $$PT_OUTPUT_DIR/checkpoints/checkpoint_best.pt
+      --batch-size 128 --beam 5 --remove-bpe
+      --tensorboard-logdir {tensorboard_dir}
+      --results-path $$PT_OUTPUT_DIR/results_fairseq-generate
+      --user-dir alpha_lang/code/alpha_lang
+    - echo "results_fairseq-generate:::"
+    - tail $$PT_OUTPUT_DIR/results_fairseq-generate/*
+    submit_args:
+      container_args:
+        shm_size: 128G
+  type: grid
+  max_trials: 128
+  params:
+    - name: tensorboard_dir
+      spec: discrete
+      values: ['$$PT_OUTPUT_DIR/logs']
+    - name: model_width
+      spec: discrete
+      values: [
+        # base_lr = 2e-5
+        '--lr 2e-05 --encoder-layers 20 --decoder-layers 20',  # deep base width
+        '--lr 1e-05 --encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048 --encoder-layers 1 --decoder-layers 1',  # wide. Compare to deep.
+        '--lr 2e-05',  # n_layers=6, base width, base layers
+        '--lr 1.4142135623730951e-05 --encoder-ffn-embed-dim 2048 --encoder-embed-dim 1024 --decoder-ffn-embed-dim 2048 --decoder-embed-dim 1024 --encoder-layers 1 --decoder-layers 1',  # med width comparison to base width, base layers
+
+        # base_lr = 5e-5
+        '--lr 5e-05 --encoder-layers 20 --decoder-layers 20',
+        '--lr 2.5e-05 --encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048 --encoder-layers 1 --decoder-layers 1',  # wide. Compare to deep.
+        '--lr 5e-05',
+        '--lr 3.535533905932738e-05 --encoder-ffn-embed-dim 2048 --encoder-embed-dim 1024 --decoder-ffn-embed-dim 2048 --decoder-embed-dim 1024 --encoder-layers 1 --decoder-layers 1',  # med width comparison to base width, base layers
+
+        # base_lr = 2e-4
+        '--lr 0.0002 --encoder-layers 20 --decoder-layers 20',
+        '--lr 0.0001 --encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048 --encoder-layers 1 --decoder-layers 1',  # wide. Compare to deep.
+        '--lr 0.0002',
+        '--lr 0.0001414213562373095 --encoder-ffn-embed-dim 2048 --encoder-embed-dim 1024 --decoder-ffn-embed-dim 2048 --decoder-embed-dim 1024 --encoder-layers 1 --decoder-layers 1',  # med width comparison to base width, base layers
+
+        # base_lr = 5e-4
+        '--lr 0.0005 --encoder-layers 20 --decoder-layers 20',
+        '--lr 0.00025 --encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048 --encoder-layers 1 --decoder-layers 1',  # wide. Compare to deep.
+        '--lr 0.0005',
+        '--lr 0.00035355339059327376 --encoder-ffn-embed-dim 2048 --encoder-embed-dim 1024 --decoder-ffn-embed-dim 2048 --decoder-embed-dim 1024 --encoder-layers 1 --decoder-layers 1',  # med width comparison to base width, base layers
+
+        # base_lr = 2e-3
+        '--lr 0.002 --encoder-layers 20 --decoder-layers 20',
+        '--lr 0.001 --encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048 --encoder-layers 1 --decoder-layers 1',  # wide. Compare to deep.
+        '--lr 0.002',
+        '--lr 0.001414213562373095 --encoder-ffn-embed-dim 2048 --encoder-embed-dim 1024 --decoder-ffn-embed-dim 2048 --decoder-embed-dim 1024 --encoder-layers 1 --decoder-layers 1',  # med width comparison to base width, base layers
+
+        # base_lr = 5e-3
+        '--lr 0.005 --encoder-layers 20 --decoder-layers 20',
+        '--lr 0.0025 --encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048 --encoder-layers 1 --decoder-layers 1',  # wide. Compare to deep.
+        '--lr 0.005',
+        '--lr 0.0035355339059327372 --encoder-ffn-embed-dim 2048 --encoder-embed-dim 1024 --decoder-ffn-embed-dim 2048 --decoder-embed-dim 1024 --encoder-layers 1 --decoder-layers 1',  # med width comparison to base width, base layers
+
+        # base_lr = 2e-2
+        '--lr 0.02 --encoder-layers 20 --decoder-layers 20',
+        '--lr 0.01 --encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048 --encoder-layers 1 --decoder-layers 1',  # wide. Compare to deep.
+        '--lr 0.02',
+        '--lr 0.014142135623730949 --encoder-ffn-embed-dim 2048 --encoder-embed-dim 1024 --decoder-ffn-embed-dim 2048 --decoder-embed-dim 1024 --encoder-layers 1 --decoder-layers 1',  # med width comparison to base width, base layers
+
+        # base_lr = 5e-2
+        '--lr 0.05 --encoder-layers 20 --decoder-layers 20',
+        '--lr 0.025 --encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048 --encoder-layers 1 --decoder-layers 1',  # wide. Compare to deep.
+        '--lr 0.05',
+        '--lr 0.035355339059327376 --encoder-ffn-embed-dim 2048 --encoder-embed-dim 1024 --decoder-ffn-embed-dim 2048 --decoder-embed-dim 1024 --encoder-layers 1 --decoder-layers 1',  # med width comparison to base width, base layers
+      ]
+    - name: run_number
+      spec: discrete
+      values: [
+        '0',
+        '1',
+      ]
+
+# Add this back into the train args to report and save checkpoints based on best_bleu instead of best_loss
+# --best-checkpoint-metric bleu --maximize-best-checkpoint-metric
+
+# script used to generate LRs.
+# base_lrs = [2e-5, 5e-5, 2e-4, 5e-4, 2e-3, 5e-3, 2e-2, 5e-2]
+# width_mults = [1., 4., 1., 2.]
+# for base_lr in base_lrs:
+#     for width_mult in width_mults:
+#         result = base_lr / (width_mult**0.5)
+#         print('--lr {}'.format(result))
