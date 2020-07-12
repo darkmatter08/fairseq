@@ -571,7 +571,8 @@ class Trainer(object):
 
         logging_output['forward_times'] = forward_times
         logging_output['backward_times'] = backward_times
-        logging_output['step_times'] = [step_time]
+        logging_output['step_times'] = [0]  # hack for fp16... 
+        # logging_output['step_times'] = [step_time]
 
         return logging_output
 
