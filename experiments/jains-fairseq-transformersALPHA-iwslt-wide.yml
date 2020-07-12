@@ -60,6 +60,7 @@ search:
       --last-layer-alpha 1
       --attn-alpha 4
       {fp16}
+      --scale-before-matmal
     - >-
       fairseq-generate data-bin/iwslt14.tokenized.de-en
       --path $$PT_OUTPUT_DIR/checkpoints/checkpoint_best.pt
@@ -117,7 +118,7 @@ search:
       spec: discrete
       values: [
         '--fp16',
-        # '--memory-efficient-fp16',
+        '--memory-efficient-fp16',
       ]
 
 # Add this back into the train args to report and save checkpoints based on best_bleu instead of best_loss

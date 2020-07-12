@@ -115,3 +115,6 @@ search:
     - name: model_eval_overrides
       spec: discrete
       values: ['--model-overrides "{''k'': 0}"']
+
+
+# DON"T HAVE --scale-before-matmal!!!!

@@ -62,6 +62,7 @@ search:
       --last-layer-alpha 1
       --attn-alpha 4
       {fp16}
+      --scale-before-matmal
     - >-
       fairseq-generate data-bin/iwslt14.tokenized.de-en
       --path $$PT_OUTPUT_DIR/checkpoints/checkpoint_best.pt
@@ -85,7 +86,7 @@ search:
       container_args:
         shm_size: 128G
   type: grid
-  max_trials: 64
+  max_trials: 128
   params:
     - name: tensorboard_dir
       spec: discrete
@@ -116,13 +117,17 @@ search:
       spec: discrete
       values: [
         '--fp16',
+        '--memory-efficient-fp16'
       ]
     - name: encoder_experiment_layer_idx
       spec: discrete
       values: ['-1']
     - name: layer_type
       spec: discrete
-      values: ['meProp_unified', 'crs --strategy det_top_k']
+      values: [
+        'meProp_unified',
+        'crs --strategy det_top_k',
+      ]
       # values: ['crs --strategy single_norm']
       # values: ['meProp_unified', 'shawn_unified', 'crs --strategy det_top_k', 'crs --strategy first_k', 'crs --strategy nps']
     - name: k

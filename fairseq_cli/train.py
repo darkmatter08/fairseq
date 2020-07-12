@@ -311,7 +311,7 @@ def validate_and_save(args, trainer, task, epoch_itr, valid_subsets, end_of_epoc
 
 
 def get_training_stats(stats):
-    stats['wall'] = round(metrics.get_meter('default', 'wall').elapsed_time, 0)
+    stats['wall'] = round(metrics.get_meter('default', 'wall').elapsed_time, 3)
     return stats
 
 
