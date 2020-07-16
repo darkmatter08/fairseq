@@ -1,0 +1,151 @@
+description: jains-fairseq-transformersALPHA-iwslt-wide-baselines-width-depth-sweeps
+
+target:
+  cluster: rr1
+  vc: resrchvc
+  # cluster: eu1
+  # vc: msrlabs
+environment:
+  image: pytorch/pytorch:1.4-cuda10.1-cudnn7-devel
+
+storage:
+  shawn:
+    storage_account_name: hpalangivm0
+    container_name: shawn
+    local_dir: /data/home/jains/shawn
+
+code:
+  local_dir: /data/home/jains/Documents/fairseq
+
+search:
+  job_template:
+    name: wide-experiments__width_{model_width}__n_layers_{n_layers}__fp16_{fp16}__max_tokens_{max_tokens}__runnumber_{run_number}
+    sku: G1
+    sku_count: 1
+    command:
+    # - git clone https://github.com/pytorch/fairseq
+    # - cd fairseq
+    # - pip install --editable ./
+    # - pip install ipdb
+    - pip install --user ./
+    - pip install --user pyarrow
+    - pip install --user fastBPE sacremoses subword_nmt
+    - pip install --user sacrebleu==1.4.10
+    - pip install --user tensorboardX
+    - pip freeze > img_pip_freeze.txt
+    # Hack to get fairseq-* CLI tools on PATH, may be caused by --user install?
+    - export PATH=$$PATH:/root/.local/bin:/home/jains/.local/bin
+    - echo RUN_NUMBER {run_number}
+    - >-
+      python -W ignore $$(which fairseq-train)
+      data-bin/iwslt14.tokenized.de-en
+      --arch transformer_alpha_iwslt_de_en
+      --share-decoder-input-output-embed
+      --optimizer adam --adam-betas '(0.9, 0.98)' --clip-norm 0.0
+      --lr-scheduler inverse_sqrt --warmup-updates 4000
+      --dropout 0.3 --weight-decay 0.0001
+      --criterion label_smoothed_cross_entropy --label-smoothing 0.1
+      --eval-bleu
+      --eval-bleu-detok moses
+      --eval-bleu-remove-bpe
+      --eval-bleu-print-samples
+      --tensorboard-logdir {tensorboard_dir}
+      --max-epoch 120
+      --no-epoch-checkpoints
+      --save-dir $$PT_OUTPUT_DIR/checkpoints
+      --max-tokens {max_tokens}
+      {model_width}
+      --encoder-layers {n_layers} --decoder-layers {n_layers}
+      --user-dir alpha_lang/code/alpha_lang
+      --last-layer-alpha 1
+      --attn-alpha 4
+      {fp16}
+      --scale-after-matmal
+    - >-
+      fairseq-generate data-bin/iwslt14.tokenized.de-en
+      --path $$PT_OUTPUT_DIR/checkpoints/checkpoint_best.pt
+      --batch-size 128 --beam 5 --remove-bpe
+      --tensorboard-logdir {tensorboard_dir}
+      --results-path $$PT_OUTPUT_DIR/results_fairseq-generate-origmodel
+      --user-dir alpha_lang/code/alpha_lang
+    - echo "results_fairseq-generate:::"
+    - tail $$PT_OUTPUT_DIR/results_fairseq-generate-origmodel/*
+    submit_args:
+      container_args:
+        shm_size: 128G
+  type: grid
+  max_trials: 128
+  params:
+    - name: tensorboard_dir
+      spec: discrete
+      values: ['$$PT_OUTPUT_DIR/logs']
+    - name: model_width
+      spec: discrete
+      values: [
+        # '--lr 5e-4 --encoder-normalize-before --decoder-normalize-before',  # STANDARD width
+        # '--lr 0.00035355339059327376 --encoder-ffn-embed-dim 2048 --encoder-embed-dim 1024 --decoder-ffn-embed-dim 2048 --decoder-embed-dim 1024',  # MED
+        # '--lr 0.00025 --encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048',  # WIDE
+        '--lr 0.00025 --encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048 --update-freq 4',  # WIDE  # --update-freq 4 allows us to have an effective batch size of 4*--max-tokens
+      ]
+    - name: n_layers
+      spec: discrete
+      values: [
+        '1',
+        '2',
+        '3',
+        '4',
+        '5',
+        '6',
+        # '7',
+        # '8',
+        # '9',
+        # '10',
+        # '20',
+        # '30',
+      ]
+    - name: run_number
+      spec: discrete
+      values: [
+        '0',
+        '1',
+      ]
+    - name: max_tokens
+      spec: discrete
+      values: [
+        # '8192',  # WIDE, OOM at epoch 1, 76%, inital alloc 15.3GB of 16.3GB
+        # '4096',  # WIDE, inital alloc 9GB
+        '2048',
+        # '1024',
+        # '512',
+      ]
+    - name: fp16
+      spec: discrete
+      values: [
+        '--fp16',
+        # '--memory-efficient-fp16'
+      ]
+
+# Add this back into the train args to report and save checkpoints based on best_bleu instead of best_loss
+# --best-checkpoint-metric bleu --maximize-best-checkpoint-metric
+
+# --fp16
+# 8192, wide, 10 layers -- fails
+# 8192, wide, 1 layers -- fails
+# 1024, wide, 5 layers -- runs!
+# 2048, wide, 5 layers -- runs!
+# 2048, wide, 6 layers -- runs!
+# 4096, wide, 5 layers -- runs, but likely to OOM.
+# 4096, wide, 6 layers -- runs, but likely to OOM.
+# 1024, wide, 10 layers -- fails
+# 1024, wide, 6 layers -- runs!
+# 512, wide, 6 layers -- runs!
+# 8192, wide, 6 layers -- fails
+
+
+
+# '--lr 0.00025 --encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048 --update-freq 4',  # WIDE  # --update-freq 4 allows us to have an effective batch size of 4*--max-tokens
+# train_wall 226
+
+# '--lr 0.00025 --encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048',  # WIDE  # --update-freq 4 allows us to have an effective batch size of 4*--max-tokens
+# train_wall 34
+# 6x higher train_wall time!
