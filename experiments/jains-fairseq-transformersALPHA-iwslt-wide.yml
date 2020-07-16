@@ -60,7 +60,7 @@ search:
       --last-layer-alpha 1
       --attn-alpha 4
       {fp16}
-      --scale-before-matmal
+      --scale-after-matmal
     - >-
       fairseq-generate data-bin/iwslt14.tokenized.de-en
       --path $$PT_OUTPUT_DIR/checkpoints/checkpoint_best.pt

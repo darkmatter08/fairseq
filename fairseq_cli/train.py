@@ -236,9 +236,12 @@ def train(args, trainer, task, epoch_itr):
     backward_time_sum = torch.sum(backward_times)
     backward_time_mean = torch.mean(backward_times)
     backward_time_std = torch.std(backward_times)
-    step_time_sum = torch.sum(step_times)
-    step_time_mean = torch.mean(step_times)
-    step_time_std = torch.std(step_times)
+    # step_time_sum = torch.sum(step_times)
+    # step_time_mean = torch.mean(step_times)
+    # step_time_std = torch.std(step_times)
+    step_time_sum = -1
+    step_time_mean = -1
+    step_time_std = -1
 
     metrics.log_scalar("forward_time_sum",  forward_time_sum, priority=700, round=4)
     print("forward_time_sum={:.4f}".format(forward_time_sum))

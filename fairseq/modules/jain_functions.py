@@ -302,19 +302,23 @@ class linear_crs(Function):
         # PyTorch convention is dy is a col vector, i.e. dy = (dL/dy).T
         x, w, b = self.saved_tensors
 
+        # TODO change all to mm/mv instead of @
         dx = dw = db = None
         if self.k <= 0:  # baseline, exact MatMul instead of CRS.
             if self.needs_input_grad[1]:  # w
-                dw = dy.T @ x
+                # dw = dy.T @ x
+                dw = torch.mm(dy.T, x)
                 assert dw.shape == w.shape
 
             if self.needs_input_grad[0]:  # x
-                dx = dy @ w
+                # dx = dy @ w
+                dx = torch.mm(dy, w)
                 assert dx.shape == x.shape
 
             if self.needs_input_grad[2]:  # b
                 # TODO: work out the formula for this.
-                db = dy.T @ torch.ones(dy.shape[0], device=dy.device)
+                # db = dy.T @ torch.ones(dy.shape[0], device=dy.device, dtype=dy.dtype)
+                db = torch.mv(dy.T, torch.ones(dy.shape[0], device=dy.device, dtype=dy.dtype))
                 assert db.shape == b.shape
 
             return dx, dw, db
@@ -325,15 +329,17 @@ class linear_crs(Function):
 
         if self.needs_input_grad[1]:  # w
             if FULL_DW_EXPERIMENT:
-                dw = dy.T @ x
+                dw = torch.mm(dy.T, x)
             else:  # true crs style.
-                partial_dw = dy.T @ x[:, indexes]
+                # partial_dw = dy.T @ x[:, indexes]
+                partial_dw = torch.mm(dy.T, x[:, indexes])
                 dw = torch.zeros_like(w)
                 dw[:, indexes] = partial_dw  # alternative to scatter_ or index_copy_
                 assert dw.shape == w.shape
 
         if self.needs_input_grad[0]:  # x
-            partial_dx = dy @ w[:, indexes]
+            # partial_dx = dy @ w[:, indexes]
+            partial_dx = torch.mm(dy, w[:, indexes])
             dx = torch.zeros_like(x)
             dx[:, indexes] = partial_dx
             assert dx.shape == x.shape
@@ -341,7 +347,9 @@ class linear_crs(Function):
         if self.needs_input_grad[2]:  # b
             # TODO: what is the right formula for this?
             # bias with batches???
-            db = dy.T @ torch.ones(dy.shape[0], device=dy.device)
+            # db = dy.T @ torch.ones(dy.shape[0], device=dy.device)
+            # db = dy.T @ torch.ones(dy.shape[0], device=dy.device, dtype=dy.dtype)
+            db = torch.mv(dy.T, torch.ones(dy.shape[0], device=dy.device, dtype=dy.dtype))
             assert db.shape == b.shape
 
         # Why is their formula still different/backwards than ours?
