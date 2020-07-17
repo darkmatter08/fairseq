@@ -1,4 +1,4 @@
-description: jains-fairseq-transformersALPHA-iwslt-wide-baselines-width-depth-sweeps
+description: jains-fairseq-transformersALPHA-iwslt-wide-baselines-width-depth-sweeps-experiments
 
 target:
   cluster: rr1
@@ -19,7 +19,7 @@ code:
 
 search:
   job_template:
-    name: wide-experiments__width_{model_width}__n_layers_{n_layers}__fp16_{fp16}__max_tokens_{max_tokens}__runnumber_{run_number}
+    name: wide-experiments__width_{model_width}__n_layers_{n_layers}__fp16_{fp16}__max_tokens_{max_tokens}__encoder_experiment_layer_idx_{encoder_experiment_layer_idx}__layer_type_{layer_type}__k_{k}__runnumber_{run_number}
     sku: G1
     sku_count: 1
     command:
@@ -39,7 +39,10 @@ search:
     - >-
       python -W ignore $$(which fairseq-train)
       data-bin/iwslt14.tokenized.de-en
-      --arch transformer_alpha_iwslt_de_en
+      --arch transformer_alpha_iwslt_de_en_JAIN
+      --encoder_experiment_layer_idx {encoder_experiment_layer_idx}
+      --encoder_experiment_layer_type {layer_type}
+      --k {k}
       --share-decoder-input-output-embed
       --optimizer adam --adam-betas '(0.9, 0.98)' --clip-norm 0.0
       --lr-scheduler inverse_sqrt --warmup-updates 4000
@@ -70,6 +73,16 @@ search:
       --user-dir alpha_lang/code/alpha_lang
     - echo "results_fairseq-generate:::"
     - tail $$PT_OUTPUT_DIR/results_fairseq-generate-origmodel/*
+    - >-
+      fairseq-generate data-bin/iwslt14.tokenized.de-en
+      --path $$PT_OUTPUT_DIR/checkpoints/checkpoint_best.pt
+      --batch-size 128 --beam 5 --remove-bpe
+      --tensorboard-logdir {tensorboard_dir}
+      --results-path $$PT_OUTPUT_DIR/results_fairseq-generate-modifiedmodel
+      --user-dir alpha_lang/code/alpha_lang
+      {model_eval_overrides}
+    - echo "results_fairseq-generate-modifiedmodel:::"
+    - tail $$PT_OUTPUT_DIR/results_fairseq-generate-modifiedmodel/*
     submit_args:
       container_args:
         shm_size: 128G
@@ -126,7 +139,23 @@ search:
         '--fp16',
         # '--memory-efficient-fp16'
       ]
-
+    - name: encoder_experiment_layer_idx
+      spec: discrete
+      values: ['-1']
+    - name: layer_type
+      spec: discrete
+      values: ['crs --strategy det_top_k', 'crs --strategy single_norm']
+      # values: ['crs --strategy single_norm']
+      # values: ['meProp_unified', 'shawn_unified', 'crs --strategy det_top_k', 'crs --strategy first_k', 'crs --strategy nps']
+    - name: k
+      spec: discrete
+      values: [
+        '64',
+        # '256'
+      ]
+    - name: model_eval_overrides
+      spec: discrete
+      values: ['--model-overrides "{''k'': 0}"']
 # Add this back into the train args to report and save checkpoints based on best_bleu instead of best_loss
 # --best-checkpoint-metric bleu --maximize-best-checkpoint-metric
 

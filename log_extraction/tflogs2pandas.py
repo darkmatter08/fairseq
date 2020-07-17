@@ -97,7 +97,7 @@ def main(logdir_or_logfile: str, write_pkl: bool, write_csv: bool, out_dir: str)
         event_paths = [logdir_or_logfile]
     else:
         raise ValueError(
-            "input argument {} has to be a file or a directory".format(
+            "ERROR::: input argument {} has to be a file or a directory".format(
                 logdir_or_logfile
             )
         )
