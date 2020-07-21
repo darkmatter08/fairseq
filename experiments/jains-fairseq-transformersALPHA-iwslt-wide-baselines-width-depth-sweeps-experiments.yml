@@ -87,7 +87,7 @@ search:
       container_args:
         shm_size: 128G
   type: grid
-  max_trials: 128
+  max_trials: 256
   params:
     - name: tensorboard_dir
       spec: discrete
@@ -95,10 +95,10 @@ search:
     - name: model_width
       spec: discrete
       values: [
-        '--lr 1.00e-03 --encoder-ffn-embed-dim 256 --encoder-embed-dim 128 --decoder-ffn-embed-dim 256 --decoder-embed-dim 128 --encoder-normalize-before --decoder-normalize-before',  # VNARROW width
+        # '--lr 1.00e-03 --encoder-ffn-embed-dim 256 --encoder-embed-dim 128 --decoder-ffn-embed-dim 256 --decoder-embed-dim 128 --encoder-normalize-before --decoder-normalize-before',  # VNARROW width
         # '--lr 7.07e-04 --encoder-ffn-embed-dim 512 --encoder-embed-dim 256 --decoder-ffn-embed-dim 512 --decoder-embed-dim 256 --encoder-normalize-before --decoder-normalize-before',  # NARROW width
         # '--lr 5e-4 --encoder-normalize-before --decoder-normalize-before',  # STANDARD width
-        # '--lr 0.00035355339059327376 --encoder-ffn-embed-dim 2048 --encoder-embed-dim 1024 --decoder-ffn-embed-dim 2048 --decoder-embed-dim 1024 --encoder-normalize-before --decoder-normalize-before  --update-freq 4',  # MED # --update-freq 4 allows us to have an effective batch size of 4*--max-tokens
+        '--lr 0.00035355339059327376 --encoder-ffn-embed-dim 2048 --encoder-embed-dim 1024 --decoder-ffn-embed-dim 2048 --decoder-embed-dim 1024 --encoder-normalize-before --decoder-normalize-before  --update-freq 4',  # MED # --update-freq 4 allows us to have an effective batch size of 4*--max-tokens
         # '--lr 0.00025 --encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048',  # WIDE
         # '--lr 0.00025 --encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048 --update-freq 4',  # WIDE  # --update-freq 4 allows us to have an effective batch size of 4*--max-tokens
       ]
@@ -116,7 +116,7 @@ search:
         '9',
         '10',
         '20',
-        '30',
+        # '30',
       ]
     - name: run_number
       spec: discrete
@@ -127,9 +127,9 @@ search:
     - name: max_tokens
       spec: discrete
       values: [
-        '8192',  # WIDE, OOM at epoch 1, 76%, inital alloc 15.3GB of 16.3GB
+        # '8192',  # WIDE, OOM at epoch 1, 76%, inital alloc 15.3GB of 16.3GB
         # '4096',  # WIDE, inital alloc 9GB
-        # '2048',
+        '2048',
         # '1024',
         # '512',
       ]
@@ -151,7 +151,7 @@ search:
       spec: discrete
       values: [
         '64',
-        # '256'
+        '256'
       ]
     - name: model_eval_overrides
       spec: discrete

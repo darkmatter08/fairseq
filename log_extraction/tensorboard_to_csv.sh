@@ -1,32 +1,7 @@
 JOB=$1
-python /home/jains/Documents/fairseq/log_extraction/tflogs2pandas.py ~/phillytools/projects/pt_transformers/015fc86d/pt-results/application_$JOB/logs/valid --write-csv -o ~/phillytools/projects/pt_transformers/015fc86d/pt-results/application_$JOB/logs/valid
+EXPERIMENT=$2
+python /home/jains/Documents/fairseq/log_extraction/tflogs2pandas.py ~/phillytools/projects/pt_transformers/$EXPERIMENT/pt-results/application_$JOB/logs/valid --write-csv -o ~/phillytools/projects/pt_transformers/$EXPERIMENT/pt-results/application_$JOB/logs/valid
 
-python /home/jains/Documents/fairseq/log_extraction/tflogs2pandas.py ~/phillytools/projects/pt_transformers/015fc86d/pt-results/application_$JOB/logs/train --write-csv -o ~/phillytools/projects/pt_transformers/015fc86d/pt-results/application_$JOB/logs/train
+python /home/jains/Documents/fairseq/log_extraction/tflogs2pandas.py ~/phillytools/projects/pt_transformers/$EXPERIMENT/pt-results/application_$JOB/logs/train --write-csv -o ~/phillytools/projects/pt_transformers/$EXPERIMENT/pt-results/application_$JOB/logs/train
 
-# for log in 1583898264103_223332 1583898264103_223322 1583898264103_223329 1583898264103_223337 1583898264103_223336 1583898264103_223330 1583898264103_223334 1583898264103_223326 1583898264103_223323 1583898264103_223333 1583898264103_223331 1583898264103_223324 1583898264103_223325 1583898264103_223328 1583898264103_223335 1583898264103_223327;
-# do
-#     ./tensorboard_to_csv.sh $log;
-# done
-
-# for log in 1583898264103_223332;
-# do
-#     ./tensorboard_to_csv.sh $log;
-# done
-
-# for log in 1583898264103_223332; do ./tensorboard_to_csv.sh $log; done
-
-# for log in 1583898264103_223332 1583898264103_223322 1583898264103_223329 1583898264103_223337 1583898264103_223336 1583898264103_223330 1583898264103_223334 1583898264103_223326 1583898264103_223323 1583898264103_223333 1583898264103_223331 1583898264103_223324 1583898264103_223325 1583898264103_223328 1583898264103_223335 1583898264103_223327; do ./tensorboard_to_csv.sh $log; done
-
-
-# Failed:
-# 1583898264103_223330/logs/valid
-# 1583898264103_223330/logs/train
-# 1583898264103_223333/logs/valid
-# 1583898264103_223333/logs/train 
-# 1583898264103_223325/logs/valid
-# 1583898264103_223325/logs/train
-
-
-# for log in 1583898264103_223198 1583898264103_223239 1583898264103_223245 1583898264103_223200 1583898264103_223209 1583898264103_223227 1583898264103_223190 1583898264103_223237; do ./tensorboard_to_csv.sh $log; done
-
-# 1583898264103_223198 1583898264103_223239 1583898264103_223245 1583898264103_223200 1583898264103_223209 1583898264103_223227 1583898264103_223190 1583898264103_223237
+# for log in 1583898264103_223198 1583898264103_223239 1583898264103_223245 1583898264103_223200 1583898264103_223209 1583898264103_223227 1583898264103_223190 1583898264103_223237; do ./tensorboard_to_csv.sh $log 0c080845; done
