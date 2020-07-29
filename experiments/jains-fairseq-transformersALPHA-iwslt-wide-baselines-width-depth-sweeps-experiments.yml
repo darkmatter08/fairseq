@@ -98,9 +98,9 @@ search:
         # '--lr 1.00e-03 --encoder-ffn-embed-dim 256 --encoder-embed-dim 128 --decoder-ffn-embed-dim 256 --decoder-embed-dim 128 --encoder-normalize-before --decoder-normalize-before',  # VNARROW width
         # '--lr 7.07e-04 --encoder-ffn-embed-dim 512 --encoder-embed-dim 256 --decoder-ffn-embed-dim 512 --decoder-embed-dim 256 --encoder-normalize-before --decoder-normalize-before',  # NARROW width
         # '--lr 5e-4 --encoder-normalize-before --decoder-normalize-before',  # STANDARD width
-        '--lr 0.00035355339059327376 --encoder-ffn-embed-dim 2048 --encoder-embed-dim 1024 --decoder-ffn-embed-dim 2048 --decoder-embed-dim 1024 --encoder-normalize-before --decoder-normalize-before  --update-freq 4',  # MED # --update-freq 4 allows us to have an effective batch size of 4*--max-tokens
+        # '--lr 0.00035355339059327376 --encoder-ffn-embed-dim 2048 --encoder-embed-dim 1024 --decoder-ffn-embed-dim 2048 --decoder-embed-dim 1024 --encoder-normalize-before --decoder-normalize-before  --update-freq 4',  # MED # --update-freq 4 allows us to have an effective batch size of 4*--max-tokens
         # '--lr 0.00025 --encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048',  # WIDE
-        # '--lr 0.00025 --encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048 --update-freq 4',  # WIDE  # --update-freq 4 allows us to have an effective batch size of 4*--max-tokens
+        '--lr 0.00025 --encoder-ffn-embed-dim 4096 --encoder-embed-dim 2048 --decoder-ffn-embed-dim 4096 --decoder-embed-dim 2048 --update-freq 4',  # WIDE  # --update-freq 4 allows us to have an effective batch size of 4*--max-tokens
       ]
     - name: n_layers
       spec: discrete
@@ -111,11 +111,11 @@ search:
         '4',
         '5',
         '6',
-        '7',
-        '8',
-        '9',
-        '10',
-        '20',
+        # '7',
+        # '8',
+        # '9',
+        # '10',
+        # '20',
         # '30',
       ]
     - name: run_number

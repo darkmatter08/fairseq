@@ -332,14 +332,14 @@ class linear_crs(Function):
                 dw = torch.mm(dy.T, x)
             else:  # true crs style.
                 # partial_dw = dy.T @ x[:, indexes]
-                partial_dw = torch.mm(dy.T, x[:, indexes])
+                partial_dw = torch.mm(dy.T, x[:, indexes])  # non-uniform memory access pattern. likely a bottleneck...
                 dw = torch.zeros_like(w)
                 dw[:, indexes] = partial_dw  # alternative to scatter_ or index_copy_
                 assert dw.shape == w.shape
 
         if self.needs_input_grad[0]:  # x
             # partial_dx = dy @ w[:, indexes]
-            partial_dx = torch.mm(dy, w[:, indexes])
+            partial_dx = torch.mm(dy, w[:, indexes])  # TODO: Greg's suggestion. dy is sparse, sample on dy as well different indicies.
             dx = torch.zeros_like(x)
             dx[:, indexes] = partial_dx
             assert dx.shape == x.shape
